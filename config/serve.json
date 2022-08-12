@@ -1,0 +1,31 @@
+{
+    "$schema": "https://developer.microsoft.com/json-schemas/core-build/serve.schema.json",
+    "port": 4321,
+    "https": true,
+    "serveConfigurations": {
+        "default": {
+            "pageUrl": "https://russellwgove.sharepoint.com/sites/CR-EU-Manufacturing/Shared%20Documents/Forms/AllItems.aspx",
+            "customActions": {
+                "02b09893-193a-47bb-85e6-0280fbfd41dc": {
+                    "location": "ClientSideExtension.ListViewCommandSet.CommandBar",
+                    "properties": {
+                        "sampleTextOne": "One item is selected in the list",
+                        "sampleTextTwo": "This command is always visible."
+                    }
+                }
+            }
+        },
+        "shareToTeams": {
+            "pageUrl": "https://contoso.sharepoint.com/sites/mySite/SitePages/myPage.aspx",
+            "customActions": {
+                "02b09893-193a-47bb-85e6-0280fbfd41dc": {
+                    "location": "ClientSideExtension.ListViewCommandSet.CommandBar",
+                    "properties": {
+                        "sampleTextOne": "One item is selected in the list",
+                        "sampleTextTwo": "This command is always visible."
+                    }
+                }
+            }
+        }
+    }
+}
