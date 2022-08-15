@@ -13,8 +13,13 @@ import {
   HttpClientResponse,
   AadHttpClientConfiguration,
 } from "@microsoft/sp-http";
+
+import "@pnp/graph/users";
 import { spfi, SPFx } from "@pnp/sp";
+
 import * as strings from 'ShareToTeamsCommandSetStrings';
+import { graphfi } from '@pnp/graph';
+import { SPFx as SPFxgr } from '@pnp/graph';
 
 /**
  * If your command set uses the ClientSideComponentProperties JSON input,
@@ -30,27 +35,13 @@ export interface IShareToTeamsCommandSetProperties {
 const LOG_SOURCE: string = 'ShareToTeamsCommandSet';
 
 export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShareToTeamsCommandSetProperties> {
-  private aadHttpClient: AadHttpClient;
+ // private aadHttpClient: AadHttpClient;
   @override
-  public onInit(): Promise<void> {
+  public async onInit(): Promise<void> {
     debugger;
-    return super.onInit().then((_) => {
-      debugger;
-      const sp = spfi().using(SPFx(this.context));
-
-      return this.context.aadHttpClientFactory
-        //.getClient(this.properties.hellosignFunctionClientID)
-        .getClient("becb3efa-2875-4eda-8fb8-40d03f7cb4e7")
-        .then((client): void => {
-          // connect to the API
-          debugger;
-          this.aadHttpClient = client;
-      
-        })
-        .catch((e) => {
-          debugger;
-        });
-    });
+   
+    await super.onInit();
+   
   }
 
   @override
@@ -67,8 +58,7 @@ export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShar
     switch (event.itemId) {
       case 'COMMAND_SHARE_TO_TEAMS':
        this.cmdShareToTeams(event);
-       debugger;
-        break;
+         break;
       default:
         throw new Error('Unknown command');
     }
@@ -77,7 +67,6 @@ export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShar
   private cmdShareToTeams(event: IListViewCommandSetExecuteEventParameters) {
     const dialog: ShareToTeamsDialog = new ShareToTeamsDialog();
     dialog.title = `CHECK STATUS`;
-    dialog.aadHttpClient = this.aadHttpClient;
     dialog.context = this.context;
     dialog.event = event;
     dialog.show();

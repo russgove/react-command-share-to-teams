@@ -1,34 +1,43 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
-  "solution": {
-    "name": "react-command-share-to-teams-client-side-solution",
-    "id": "98fc8351-80c6-4dd8-9593-aa1127531ef2",
-    "version": "1.0.0.0",
-    "includeClientSideAssets": true,
-    "isDomainIsolated": false,
-    "developer": {
-      "name": "",
-      "websiteUrl": "",
-      "privacyUrl": "",
-      "termsOfUseUrl": "",
-      "mpnId": ""
-    },
-    "features": [
-      {
-        "title": "Application Extension - Deployment of custom action.",
-        "description": "Deploys a custom action with ClientSideComponentId association",
-        "id": "b1814e4d-46eb-4aab-9cc4-df952d0a4b56",
+    "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+    "solution": {
+        "name": "react-command-share-to-teams-client-side-solution",
+        "id": "98fc8351-80c6-4dd8-9593-aa1127531ef2",
         "version": "1.0.0.0",
-        "assets": {
-          "elementManifests": [
-            "elements.xml",
-            "ClientSideInstance.xml"
-          ]
-        }
-      }
-    ]
-  },
-  "paths": {
-    "zippedPackage": "solution/react-command-share-to-teams.sppkg"
-  }
+        "includeClientSideAssets": true,
+        "isDomainIsolated": false,
+        "metadata": {
+            "shortDescription": {
+                "default": "react-command-share-to-teams description"
+            },
+            "longDescription": {
+                "default": "react-command-share-to-teams description"
+            },
+            "screenshotPaths": [],
+            "videoUrl": "",
+            "categories": []
+        },
+        "developer": {
+            "name": "",
+            "websiteUrl": "",
+            "privacyUrl": "",
+            "termsOfUseUrl": "",
+            "mpnId": ""
+        },
+        "features": [{
+            "title": "Application Extension - Deployment of custom action.",
+            "description": "Deploys a custom action with ClientSideComponentId association",
+            "id": "b1814e4d-46eb-4aab-9cc4-df952d0a4b56",
+            "version": "1.0.0.0",
+            "assets": {
+                "elementManifests": [
+                    "elements.xml",
+                    "ClientSideInstance.xml"
+                ]
+            }
+        }]
+    },
+    "paths": {
+        "zippedPackage": "solution/react-command-share-to-teams.sppkg"
+    }
 }
