@@ -1,133 +1,279 @@
-import { BaseDialog, Dialog, IDialogConfiguration } from "@microsoft/sp-dialog";
-import { AadHttpClient, HttpClientResponse } from "@microsoft/sp-http";
-
-
-
-import { DetailsList, SelectionMode, Selection } from "office-ui-fabric-react/lib/DetailsList";
+import { TeamsTab } from "@microsoft/microsoft-graph-types";
+import { BaseComponentContext } from "@microsoft/sp-component-base";
+import { BaseDialog, IDialogConfiguration } from "@microsoft/sp-dialog";
+import { AadHttpClient } from "@microsoft/sp-http";
+import { IListViewCommandSetExecuteEventParameters } from "@microsoft/sp-listview-extensibility";
+import { graphfi, SPFx as SPFxGR } from "@pnp/graph";
+import "@pnp/graph/teams";
+import "@pnp/graph/users";
 import { spfi, SPFx } from "@pnp/sp";
-import { DialogContent } from "office-ui-fabric-react/lib/Dialog";
+import "@pnp/sp/folders";
+import "@pnp/sp/items";
+import "@pnp/sp/lists";
+import { IListInfo } from "@pnp/sp/lists";
+import "@pnp/sp/security";
+import { IBasePermissions, PermissionKind } from "@pnp/sp/security";
+import "@pnp/sp/views";
+import { IViewInfo } from "@pnp/sp/views";
+import "@pnp/sp/webs";
+import { TeamChannelPicker } from "@pnp/spfx-controls-react/lib/TeamChannelPicker";
+import { TeamPicker } from "@pnp/spfx-controls-react/lib/TeamPicker";
+import { ChoiceGroup, PrimaryButton } from "office-ui-fabric-react";
 import { CommandBar, ICommandBarItemProps } from 'office-ui-fabric-react/lib/CommandBar';
-
-import { Link } from "office-ui-fabric-react/lib/Link";
-import { MessageBar, MessageBarType, } from "office-ui-fabric-react/lib/MessageBar";
+import { DetailsList, SelectionMode } from "office-ui-fabric-react/lib/DetailsList";
+import { DialogContent } from "office-ui-fabric-react/lib/Dialog";
 import { Panel, PanelType } from "office-ui-fabric-react/lib/Panel";
-
+import { ITag, TagPicker } from "office-ui-fabric-react/lib/Pickers";
 import { TextField } from "office-ui-fabric-react/lib/TextField";
 import * as React from "react";
+import { useEffect } from "react";
 import * as ReactDOM from "react-dom";
-
-
-import "@pnp/sp/webs";
-import "@pnp/sp/lists";
-import "@pnp/sp/items";
-import { BaseComponentContext } from "@microsoft/sp-component-base";
-import { IListViewCommandSetExecuteEventParameters } from "@microsoft/sp-listview-extensibility";
-
+import { ShareType } from "../model/model";
 interface IShareToTeamsProps {
-
   title: string;
   close: () => void;
   aadHttpClient: AadHttpClient;
   context: BaseComponentContext;
   event: IListViewCommandSetExecuteEventParameters;
 }
-interface IShareToTeamsState {
-  errors: Array<string>;
-  selectionDetails: string;
-}
-
-class ShareToTeamsContent extends React.Component<IShareToTeamsProps, IShareToTeamsState> {
-  private _selection: Selection;
-  constructor(props: IShareToTeamsProps) {
-    super(props);
-    this._selection = new Selection({
-    });
-    this.state = {
-      errors: [],
-
-      selectionDetails: "",
-    };
+function ShareToTeamsContent(props: IShareToTeamsProps) {
+  function _onSelectedTeams(tagList: ITag[]) {
+    setSelectedTeams(tagList);
+  };
+  function _onSelectedTeamChannels(tagList: ITag[]) {
+    setSelectedTeamChannels(tagList);
   }
+  async function addTab() {
+    const graph = graphfi().using(SPFxGR(props.context));
+    debugger;
 
-  public componentDidMount() {
+    const teamId: string = selectedTeams[0].key as string;
+    const channelId: string = selectedTeamChannels[0].key as string;
+    console.log(`TEAM ID is ${teamId}. CHANNEL ID is ${channelId}`);
+    const team = await graph.teams.getById(teamId)();
+    console.log(team);
+    const channel = await graph.teams.getById(teamId).channels.getById(channelId);
+    console.log(channel);
+
+    const tabs = await graph.teams.getById(teamId).channels.getById(channelId).tabs;
+    console.log(tabs);
 
 
+
+
+
+
+    const teamsTab: TeamsTab = {} as TeamsTab;
+    teamsTab.displayName = tabName;
+
+    teamsTab.configuration = {
+      contentUrl: "https://russellwgove.sharepoint.com/sites/CR-EU-Manufacturing/Shared%20Documents/Forms/AllItems.aspx",
+    }
+
+    const newTab = tabs.add('Tab', 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88', teamsTab)
+      .then((t) => {
+        debugger;
+        console.log(t);
+      })
+      .catch(err => {
+        debugger;
+        console.log(err);
+        alert(err.message);
+      });
+
+    // const newTab = await graph.teams.getById(teamId)
+    //   .channels
+    //   .getById(channelId)
+    //   .tabs
+    //   .add('Tab', 'https://www.google.com', teamsTab);
+    console.log(newTab);
+    debugger;
   }
-  public render(): JSX.Element {
-    const _items: ICommandBarItemProps[] = [
+  const _items: ICommandBarItemProps[] = [
+    {
+      key: 'View',
+      text: 'View on HelloSign',
+      iconProps: { iconName: 'View' }
+    },
 
-      {
-        key: 'View',
-        text: 'View on HelloSign',
-        iconProps: { iconName: 'View' }
+  ];
+  const [shareType, setShareType] = React.useState<ShareType>(null);
+  const [list, setList] = React.useState<IListInfo>(null);
+  const [item, setItem] = React.useState<any>(null);
+  const [selectedTeams, setSelectedTeams] = React.useState<ITag[]>([]);
+  const [selectedTeamChannels, setSelectedTeamChannels] = React.useState<ITag[]>([]);
 
-      },
+  const [folder, setFolder] = React.useState<string>(null);
+  const [userCanManagePermissions, setUserCanManagePermissions] = React.useState<boolean>(false);
+  const [allViews, setAllViews] = React.useState<IViewInfo[]>([]);
+  const [viewId, setViewId] = React.useState<string>(null);
+  const [tabName, setTabName] = React.useState<string>("");
+  const [libraryName, setLibraryName] = React.useState<string>("");
+  const [permissionsOnSP, setPermissionsOnSP] = React.useState<IBasePermissions>(null);
+  useEffect(() => {
+    // declare the data fetching function
+    const fetchData = async () => {
+      setLibraryName(props.context.pageContext.list.title);
+      setTabName(props.context.pageContext.list.title);
+      const urlParams = new URLSearchParams(window.location.search);
+      const folder = urlParams.get("id")
+      setFolder(folder);
+      const viewId = urlParams.get("viewid");
+      setViewId(viewId);
+      const sp = spfi().using(SPFx(props.context));
+      await sp.web.lists
+        .getById(props.context.pageContext.list.id.toString())
+        .views().then(views => {
 
-    ];
-    return (
-      <DialogContent
-        title={"Share to Teams"}
+          setAllViews(views.filter(v => v.Hidden === false));
+          if (!viewId) {
+            setViewId(views.filter[0].Id);
+          }
+          
+        });
+      const locShareType = await getSharingType(sp, folder);
+      setShareType(locShareType);
+      switch (locShareType) {
+        case ShareType.Library:
 
-        showCloseButton={true}
+          await sp.web.lists
+            .getById(props.context.pageContext.list.id.toString())
+            .currentUserHasPermissions(PermissionKind.ManagePermissions).then((hasPermissions) => {
+              setUserCanManagePermissions(hasPermissions);
+            });
+          // await sp.web.lists.getById(props.context.pageContext.list.id.toString()).
+          //   effectiveBasePermissions()
+          //   .then(permissions => {
+          //     setUserCanManagePermissions(permissions.has(PermissionKind.ManagePermissions));
+          //     setPermissionsOnSP(permissions);
+
+          //   }).catch(err => {
+          //     debugger;
+          //     console.log(err);
+          //   });
+          break;
+        case ShareType.Folder:
+          const locFolder = await sp.web.getFolderById(folder).getItem();
+          locFolder.effectiveBasePermissions().then((permissions) => {
+            setPermissionsOnSP(permissions);
+            setUserCanManagePermissions(permissions.has(PermissionKind.ManagePermissions));
+          }).catch(err => {
+            debugger;
+            console.log(err);
+          });
+          break;
+        case ShareType.File:
+          break;
+
+      }
+
+    }
+    // call the function
+    fetchData()
+      // make sure to catch any error
+      .catch(console.error);
+  }, [])
+  return (
+    <DialogContent
+      title={"Share to Teams"}
+      onDismiss={props.close}
+      showCloseButton={true}
+    >
+
+      <div>
+        ShareType is {ShareType[shareType]}<br />
+        Library  is {libraryName}<br />
+        Folder is {folder}<br />
+        ViewId is {viewId}<br />
+        userCanManagePermissions is {userCanManagePermissions ? "true" : "false"}<br />
+        <TeamPicker label="Select Team"
+          selectedTeams={selectedTeams}
+          appcontext={props.context}
+          itemLimit={1}
+          onSelectedTeams={_onSelectedTeams} />
+
+        <TeamChannelPicker label="Select Team channel"
+          teamId={selectedTeams.length > 0 ? selectedTeams[0].key : null}
+          selectedChannels={selectedTeamChannels}
+          appcontext={props.context}
+          itemLimit={1}
+          onSelectedChannels={_onSelectedTeamChannels} />
+<ChoiceGroup  label="Select a view" title="View"  options={allViews.map(view=>{return {key:view.Id,text:view.Title}})}  defaultSelectedKey={viewId} />
+          <TextField label="Tab Name" onChange={(e, newValue) => { setTabName(newValue) }} value={tabName} />
+        <PrimaryButton onClick={addTab}> Add Tab to Team</PrimaryButton>
+      </div>
+
+
+
+      <Panel
+        type={PanelType.large} headerText="HelloSign Status"
+        onDismiss={(e) => {
+        }}
       >
-        <div>
-          {this.state.errors.map((error, i) => {
-            console.log("Entered");
-            // Return the errors
-            return (
-              <MessageBar messageBarType={MessageBarType.error}>
-                {error}{" "}
-              </MessageBar>
-            );
-          })}
-        </div>
-
-
-
-        <Panel
-          type={PanelType.large} headerText="HelloSign Status"
-          onDismiss={(e) => {
-
-            this.setState((current) => ({
-              ...current,
-              signatureRequestFromHS: null,
-            }));
-          }}
-        >
-          <CommandBar items={_items} />
+        <CommandBar items={_items} />
 
 
 
 
-          <TextField
-            label="Requester"
-            value={"[]"}
-            borderless={true}
-          />
-          <DetailsList selection={this._selection}
-            items={[]}
-            // layoutMode={DetailsListLayoutMode.fixedColumns}
-            selectionMode={SelectionMode.single}
-            columns={[
-              {
-                key: "signerName",
-                name: "Name",
-                fieldName: "signerName",
-                minWidth: 200,
+        <TextField
+          label="Requester"
+          value={"[]"}
+          borderless={true}
+        />
+        <DetailsList
+          items={[]}
+          // layoutMode={DetailsListLayoutMode.fixedColumns}
+          selectionMode={SelectionMode.single}
+          columns={[
+            {
+              key: "signerName",
+              name: "Name",
+              fieldName: "signerName",
+              minWidth: 200,
 
-                isResizable: true,
-              },
-
-
-            ]}
-          ></DetailsList>
-        </Panel>
+              isResizable: true,
+            },
 
 
-      </DialogContent>
-    );
+          ]}
+        ></DetailsList>
+      </Panel>
+
+
+    </DialogContent>
+  );
+
+  async function getSharingType(sp, folder: string): Promise<ShareType> {
+    if (props.event.selectedRows.length === 1) {
+      // they selected an item. Nedd to see if its a folder or a documnent
+      debugger;
+      const list: IListInfo = await sp.web.lists
+        .getById(props.context.pageContext.list.id.toString())();
+      const item = await sp.web.lists
+        .getById(props.context.pageContext.list.id.toString())
+        .items.getById(parseInt(props.event.selectedRows[0].getValueByName("ID")))();
+      debugger;
+      setList(list);
+
+      if (item.FileSystemObjectType === 1) {
+        // its a folder
+        return ShareType.Folder;
+      } else {
+        // its a document
+        return ShareType.File;
+      }
+    } else {
+      if (folder) {
+        // they selected a folder
+        return ShareType.Folder;
+      } else {
+        // they selected a document
+        return ShareType.Library;
+      }
+    }
   }
 }
+
 export default class ShareToTeamsDialog extends BaseDialog {
 
   public title: string;
