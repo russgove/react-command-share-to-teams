@@ -4,6 +4,7 @@ import { BaseDialog, IDialogConfiguration } from "@microsoft/sp-dialog";
 import { AadHttpClient } from "@microsoft/sp-http";
 import { IListViewCommandSetExecuteEventParameters } from "@microsoft/sp-listview-extensibility";
 import { graphfi, SPFx as SPFxGR } from "@pnp/graph";
+import { find } from "lodash";
 import "@pnp/graph/teams";
 import "@pnp/graph/users";
 import { spfi, SPFx } from "@pnp/sp";
@@ -127,9 +128,17 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
 
           setAllViews(views.filter(v => v.Hidden === false));
           if (!viewId) {
-            setViewId(views.filter[0].Id);
+            const viewFromPageUrl = find(views, (v) => {
+              return v.ServerRelativeUrl === decodeURIComponent(document.location.pathname);
+            });
+            if (viewFromPageUrl) {
+              setViewId(viewFromPageUrl.Id);
+            }
+            // dunno what view to use, so use the first one
+            else {
+              setViewId(views[0].Id);
+            }
           }
-          
         });
       const locShareType = await getSharingType(sp, folder);
       setShareType(locShareType);
@@ -186,20 +195,26 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
         Folder is {folder}<br />
         ViewId is {viewId}<br />
         userCanManagePermissions is {userCanManagePermissions ? "true" : "false"}<br />
-        <TeamPicker label="Select Team"
+        <TeamPicker label="What Team would you like to share this to?" 
           selectedTeams={selectedTeams}
           appcontext={props.context}
           itemLimit={1}
           onSelectedTeams={_onSelectedTeams} />
 
-        <TeamChannelPicker label="Select Team channel"
+        <TeamChannelPicker label="What Channel would you like to share this to?"
           teamId={selectedTeams.length > 0 ? selectedTeams[0].key : null}
           selectedChannels={selectedTeamChannels}
           appcontext={props.context}
           itemLimit={1}
           onSelectedChannels={_onSelectedTeamChannels} />
-<ChoiceGroup  label="Select a view" title="View"  options={allViews.map(view=>{return {key:view.Id,text:view.Title}})}  defaultSelectedKey={viewId} />
-          <TextField label="Tab Name" onChange={(e, newValue) => { setTabName(newValue) }} value={tabName} />
+        <ChoiceGroup 
+        label="Which view would you like to show in the Teams Tab?" 
+        title="View" 
+        options={allViews.map(view => { return { key: view.Id, text: view.Title } })}
+         defaultSelectedKey={viewId} 
+         selectedKey={viewId}
+         />
+        <TextField label="What would you like the text in the Teams Tab to say?" onChange={(e, newValue) => { setTabName(newValue) }} value={tabName} />
         <PrimaryButton onClick={addTab}> Add Tab to Team</PrimaryButton>
       </div>
 
