@@ -9,6 +9,7 @@ import "@pnp/graph/users";
 import { spfi, SPFx } from "@pnp/sp";
 import "@pnp/sp/folders";
 import "@pnp/sp/items";
+import { IItem, Item } from "@pnp/sp/items";
 import "@pnp/sp/lists";
 import { IListInfo } from "@pnp/sp/lists";
 import "@pnp/sp/security";
@@ -91,14 +92,6 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
     console.log(newTab);
     debugger;
   }
-  // const _items: ICommandBarItemProps[] = [
-  //   {
-  //     key: 'View',
-  //     text: 'View on HelloSign',
-  //     iconProps: { iconName: 'View' }
-  //   },
-
-  // ];
   const [shareType, setShareType] = React.useState<ShareType>(null);
   const [list, setList] = React.useState<IListInfo>(null);
   const [item, setItem] = React.useState<any>(null);
@@ -150,85 +143,133 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
     // declare the data fetching function
     const fetchData = async () => {
       let locShareType: ShareType;
-      setLibraryName(props.context.pageContext.list.title);
-      setTabName(props.context.pageContext.list.title);
+      const sp = spfi().using(SPFx(props.context));
       const urlParams = new URLSearchParams(window.location.search);
+      debugger;
       let locFolderServerRelativePath = urlParams.get("id")
       const locViewId = urlParams.get("viewid");
-      setViewId(locViewId);
-      const sp = spfi().using(SPFx(props.context));
-      await getListViews(sp, locViewId);
-      await getRoleDefs(sp);
+      const locListId = props.context.pageContext.list.id.toString();
+      let locItemId: number;
+
+      //  figure out what type of share we are dealing with
       if (props.event.selectedRows.length === 1) {
+        locItemId = parseInt(props.event.selectedRows[0].getValueByName("ID"))
         // they selected an item. Need to see if its a folder or a documnent
         debugger;
-        const locList: IListInfo = await sp.web.lists
-          .getById(props.context.pageContext.list.id.toString())();
-        const locItem = await sp.web.lists
-          .getById(props.context.pageContext.list.id.toString())
-          .items.getById(parseInt(props.event.selectedRows[0].getValueByName("ID")))
-          .expand("File")();
+        let locItem: IItem = await sp.web.lists
+          .getById(locListId)
+          .items.getById(locItemId)
+          .expand("File", "Folder")
+          .select("Title", "EffectiveBasePermissions", "FileSystemObjectType", "File/ServerRelativeUrl", "Folder/ServerRelativeUrl")
+          .expand("File", "Folder")
+          ();
+        setUserCanManagePermissions(sp.web.hasPermissions(locItem["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
         debugger;
-        setList(locList);
-
-        if (locItem.FileSystemObjectType === 1) {
+        if (locItem["FileSystemObjectType"] == 1) {
           // its a folder
-          locShareType = ShareType.Folder;
-      
 
+          setShareType(ShareType.Folder);
+          setFolderServerRelativePath(locItem["Folder"]["ServerRelativeUrl"]);
+          // see if user has permissions to share this folder
 
         } else {
           // its a document
-          locShareType = ShareType.File;
+          setShareType(ShareType.File);
         }
       } else {
+        debugger;
         if (locFolderServerRelativePath) {
           // they selected a folder
-          locShareType = ShareType.Folder;
+          setFolderServerRelativePath(locFolderServerRelativePath);
+          setShareType(ShareType.Folder);
+          sp.web.getFolderByServerRelativePath(locFolderServerRelativePath).select("Title", "EffectiveBasePermissions")()
+            .then(folder => {
+              setUserCanManagePermissions(sp.web.hasPermissions(folder["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
+            });
         } else {
           // they selected a document
-          locShareType = ShareType.Library;
-        }
-      }
-      setFolderServerRelativePath(locFolderServerRelativePath);
-      setShareType(locShareType);
-
-      // ok now that we figured out what we are sharing, lets see if they have permissions to share it
-      switch (locShareType) {
-        case ShareType.Library:
-          await sp.web.lists
-            .getById(props.context.pageContext.list.id.toString())
-            .currentUserHasPermissions(PermissionKind.ManagePermissions).then((hasPermissions) => {
-              setUserCanManagePermissions(hasPermissions);
+          setShareType(ShareType.Library)
+          sp.web.lists.getById(locListId).select("Title", "EffectiveBasePermissions")()
+            .then(folder => {
+              setUserCanManagePermissions(sp.web.hasPermissions(folder["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
             });
-          // await sp.web.lists.getById(props.context.pageContext.list.id.toString()).
-          //   effectiveBasePermissions()
-          //   .then(permissions => {
-          //     setUserCanManagePermissions(permissions.has(PermissionKind.ManagePermissions));
-          //     setPermissionsOnSP(permissions);
-
-          //   }).catch(err => {
-          //     debugger;
-          //     console.log(err);
-          //   });
-          break;
-        case ShareType.Folder:
-          
-          const locFolder = await sp.web.getFolderByServerRelativePath(folderServerRelativePath).getItem();
-          locFolder.effectiveBasePermissions().then((permissions) => {
-            setPermissionsOnSP(permissions);
-            setUserCanManagePermissions(permissions.has(PermissionKind.ManagePermissions));
-          }).catch(err => {
-            debugger;
-            console.log(err);
-          });
-          break;
-        case ShareType.File:
-          break;
+        }
 
       }
 
+      setLibraryName(props.context.pageContext.list.title);
+      setTabName(props.context.pageContext.list.title);
+      setViewId(locViewId);
+      await getListViews(sp, locViewId);
+      await getRoleDefs(sp);
+      // if (props.event.selectedRows.length === 1) {
+      //   // they selected an item. Need to see if its a folder or a documnent
+      //   debugger;
+      //   const locList: IListInfo = await sp.web.lists
+      //     .getById(props.context.pageContext.list.id.toString())();
+      //   const locItem = await sp.web.lists
+      //     .getById(props.context.pageContext.list.id.toString())
+      //     .items.getById(parseInt(props.event.selectedRows[0].getValueByName("ID")))
+      //     .expand("File")();
+      //   debugger;
+      //   setList(locList);
+
+      //   if (locItem.FileSystemObjectType === 1) {
+      //     // its a folder
+      //     locShareType = ShareType.Folder;
+
+
+
+      //   } else {
+      //     // its a document
+      //     locShareType = ShareType.File;
+      //   }
+      // } else {
+      //   if (locFolderServerRelativePath) {
+      //     // they selected a folder
+      //     locShareType = ShareType.Folder;
+      //   } else {
+      //     // they selected a document
+      //     locShareType = ShareType.Library;
+      //   }
     }
+
+    // ok now that we figured out what we are sharing, lets see if they have permissions to share it
+    // switch (locShareType) {
+    //   case ShareType.Library:
+    //     await sp.web.lists
+    //       .getById(props.context.pageContext.list.id.toString())
+    //       .currentUserHasPermissions(PermissionKind.ManagePermissions).then((hasPermissions) => {
+    //         setUserCanManagePermissions(hasPermissions);
+    //       });
+    //     // await sp.web.lists.getById(props.context.pageContext.list.id.toString()).
+    //     //   effectiveBasePermissions()
+    //     //   .then(permissions => {
+    //     //     setUserCanManagePermissions(permissions.has(PermissionKind.ManagePermissions));
+    //     //     setPermissionsOnSP(permissions);
+
+    //     //   }).catch(err => {
+    //     //     debugger;
+    //     //     console.log(err);
+    //     //   });
+    //     break;
+    //   case ShareType.Folder:
+
+    //     const locFolder = await sp.web.getFolderByServerRelativePath(folderServerRelativePath).getItem();
+    //     locFolder.effectiveBasePermissions().then((permissions) => {
+    //       setPermissionsOnSP(permissions);
+    //       setUserCanManagePermissions(permissions.has(PermissionKind.ManagePermissions));
+    //     }).catch(err => {
+    //       debugger;
+    //       console.log(err);
+    //     });
+    //     break;
+    //   case ShareType.File:
+    //     break;
+
+    // }
+
+
     // call the function
     fetchData()
       // make sure to catch any error
@@ -320,3 +361,5 @@ export default class ShareToTeamsDialog extends BaseDialog {
     ReactDOM.unmountComponentAtNode(this.domElement);
   }
 }
+
+
