@@ -5,7 +5,9 @@ import { AadHttpClient } from "@microsoft/sp-http";
 import { IListViewCommandSetExecuteEventParameters } from "@microsoft/sp-listview-extensibility";
 import { graphfi, SPFx as SPFxGR } from "@pnp/graph";
 import "@pnp/graph/teams";
+import "@pnp/graph/";
 import "@pnp/graph/users";
+import "@pnp/graph/groups";
 import { spfi, SPFx } from "@pnp/sp";
 import "@pnp/sp/folders";
 import "@pnp/sp/items";
@@ -20,7 +22,7 @@ import { IViewInfo } from "@pnp/sp/views";
 import "@pnp/sp/webs";
 import { TeamChannelPicker } from "@pnp/spfx-controls-react/lib/TeamChannelPicker";
 import { TeamPicker } from "@pnp/spfx-controls-react/lib/TeamPicker";
-import { find } from "lodash";
+import { find, forEach } from "lodash";
 import { ChoiceGroup, PrimaryButton } from "office-ui-fabric-react";
 import { CommandBar, ICommandBarItemProps } from 'office-ui-fabric-react/lib/CommandBar';
 import { DetailsList, SelectionMode } from "office-ui-fabric-react/lib/DetailsList";
@@ -40,11 +42,12 @@ interface IShareToTeamsProps {
   event: IListViewCommandSetExecuteEventParameters;
 }
 function ShareToTeamsContent(props: IShareToTeamsProps) {
-
+  const graph = graphfi().using(SPFxGR(props.context));
   const [shareType, setShareType] = React.useState<ShareType>(null);
   const [list, setList] = React.useState<IListInfo>(null);
   const [item, setItem] = React.useState<any>(null);
-  const [selectedTeams, setSelectedTeams] = React.useState<ITag[]>([]);
+  const [canManageTabs, setCanManageTabs] = React.useState<boolean>(false);
+  const [selectedTeam, setSelectedTeam] = React.useState<ITag[]>([]);
   const [selectedTeamChannels, setSelectedTeamChannels] = React.useState<ITag[]>([]);
   const [roleDefinitionInfos, setRoleDefinitionInfos] = React.useState<IRoleDefinitionInfo[]>([]);
   const [selectedRoleDefinitionId, setSelectedRoleDefinitionId] = React.useState<number>(null);
@@ -56,18 +59,18 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
   const [libraryName, setLibraryName] = React.useState<string>("");
   const [permissionsOnSP, setPermissionsOnSP] = React.useState<IBasePermissions>(null);
   async function addTab() {
-    const graph = graphfi().using(SPFxGR(props.context));
+
     debugger;
 
-    const teamId: string = selectedTeams[0].key as string;
+    const teamId: string = selectedTeam[0].key as string;
     const channelId: string = selectedTeamChannels[0].key as string;
     console.log(`TEAM ID is ${teamId}. CHANNEL ID is ${channelId}`);
     const team = await graph.teams.getById(teamId)();
     console.log(team);
     const channel = await graph.teams.getById(teamId).channels.getById(channelId);
     console.log(channel);
-    const tabs = await graph.teams.getById(teamId).channels.getById(channelId).tabs;
-    console.log(tabs);
+    const channelTabs = await graph.teams.getById(teamId).channels.getById(channelId).tabs;
+    console.log(channelTabs);
     const teamsTab: TeamsTab = {} as TeamsTab;
     teamsTab.displayName = tabName;
     let contentUrl = "";
@@ -104,10 +107,11 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
     teamsTab.configuration = {
       contentUrl: contentUrl,
     }
-    const newTab = tabs.add('Tab', 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88', teamsTab)
+    const newTab = channelTabs.add('Tab', 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88', teamsTab)
       .then((t) => {
         ;
         console.log(t);
+        channel.messages({body: {content:`New tab ${tabName} has been added to channel ${channelId}`}});
       })
       .catch(err => {
         debugger;
@@ -203,7 +207,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
           setFolderServerRelativePath(locFolderServerRelativePath);
           setShareType(ShareType.Folder);
           sp.web.getFolderByServerRelativePath(locFolderServerRelativePath)
-          .expand("ListItemAllFields/EffectiveBasePermissions")()
+            .expand("ListItemAllFields/EffectiveBasePermissions")()
             .then(folder => {
               setUserCanManagePermissions(sp.web.hasPermissions(folder["ListItemAllFields"]["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
             });
@@ -243,18 +247,49 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
         ViewId is {selectedViewId}<br />
         userCanManagePermissions is {userCanManagePermissions ? "true" : "false"}<br />
         selectedRoleDefinitionId is {selectedRoleDefinitionId}<br />
-     
+        canManageTabs is {canManageTabs ? "true" : "false"}<br />
         <TeamPicker label={`What Team would you like to share this ${ShareType[shareType]} to?`}
-          selectedTeams={selectedTeams}
+          selectedTeams={selectedTeam}
           appcontext={props.context}
           itemLimit={1}
           onSelectedTeams={(tagList: ITag[]) => {
-            setSelectedTeams(tagList);
+            setSelectedTeam(tagList);
+            graph.teams.getById(tagList[0].key.toString())()
+            .then(team => {
+              debugger;
+              if(team.memberSettings.allowCreateUpdateRemoveTabs){
+                setCanManageTabs(true);
+              }
+              else{
+                graph.groups.getById(tagList[0].key.toString()).expand("owners").select("owners")()
+                .then(group => {
+                  debugger;
+                  // if user is owner of the group, then they can manage tabs
+                  for (const owner of group.owners) {
+                    if(owner["userPrincipalName"].toLowerCase() === props.context.pageContext.user.loginName.toLowerCase()){
+                      setCanManageTabs(true);
+                      return;
+                    }
+                  }
+                  setCanManageTabs(false);
+                })
+                
+               
+                .catch(err => {
+                  console.log(err)
+                });
+             
+              }
+            })
+            .catch(err => {
+              console.log(err);
+            });
+           
           }}
         />
 
         <TeamChannelPicker label={`What Channel would you like to share this ${ShareType[shareType]}  to?`}
-          teamId={selectedTeams.length > 0 ? selectedTeams[0].key : null}
+          teamId={selectedTeam.length > 0 ? selectedTeam[0].key : null}
           selectedChannels={selectedTeamChannels}
           appcontext={props.context}
           itemLimit={1}
@@ -270,16 +305,17 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
           onChange={(e, o) => { setSelectedViewId(o.key) }}
         />
         <ChoiceGroup
-          label={`What permission like give to the members of the ${selectedTeams.length == 0 ? "" : selectedTeams[0].name} team to this ${ShareType[shareType]} ?`}
+          label={`What permission like give to the members of the ${selectedTeam.length == 0 ? "" : selectedTeam[0].name} team to this ${ShareType[shareType]} ?`}
           title="View"
           options={roleDefinitionInfos.map((rd) => {
             return { key: rd.Id.toString(), text: `${rd.Name} (${rd.Description})` };
           })}
           defaultSelectedKey={selectedRoleDefinitionId}
-          selectedKey={selectedRoleDefinitionId?selectedRoleDefinitionId.toString():null}
-          onChange={(e, o) => { 
+          selectedKey={selectedRoleDefinitionId ? selectedRoleDefinitionId.toString() : null}
+          onChange={(e, o) => {
             debugger;
-            setSelectedRoleDefinitionId(parseInt(o.key)) }}
+            setSelectedRoleDefinitionId(parseInt(o.key))
+          }}
         />
         <TextField label="What would you like the text in the Teams Tab to say?" onChange={(e, newValue) => { setTabName(newValue) }} value={tabName} />
         <PrimaryButton onClick={addTab}> Add Tab to Team</PrimaryButton>
