@@ -242,6 +242,8 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
         folderServerRelativePath is {folderServerRelativePath}<br />
         ViewId is {selectedViewId}<br />
         userCanManagePermissions is {userCanManagePermissions ? "true" : "false"}<br />
+        selectedRoleDefinitionId is {selectedRoleDefinitionId}<br />
+     
         <TeamPicker label={`What Team would you like to share this ${ShareType[shareType]} to?`}
           selectedTeams={selectedTeams}
           appcontext={props.context}
@@ -274,8 +276,10 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
             return { key: rd.Id.toString(), text: `${rd.Name} (${rd.Description})` };
           })}
           defaultSelectedKey={selectedRoleDefinitionId}
-          selectedKey={selectedRoleDefinitionId}
-          onChange={(e, o) => { setSelectedRoleDefinitionId(parseInt(o.key)) }}
+          selectedKey={selectedRoleDefinitionId?selectedRoleDefinitionId.toString():null}
+          onChange={(e, o) => { 
+            debugger;
+            setSelectedRoleDefinitionId(parseInt(o.key)) }}
         />
         <TextField label="What would you like the text in the Teams Tab to say?" onChange={(e, newValue) => { setTabName(newValue) }} value={tabName} />
         <PrimaryButton onClick={addTab}> Add Tab to Team</PrimaryButton>
