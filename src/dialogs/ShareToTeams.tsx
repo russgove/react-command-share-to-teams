@@ -47,6 +47,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
   const [selectedTeams, setSelectedTeams] = React.useState<ITag[]>([]);
   const [selectedTeamChannels, setSelectedTeamChannels] = React.useState<ITag[]>([]);
   const [roleDefinitionInfos, setRoleDefinitionInfos] = React.useState<IRoleDefinitionInfo[]>([]);
+  const [selectedRoleDefinitionId, setSelectedRoleDefinitionId] = React.useState<number>(null);
   const [folderServerRelativePath, setFolderServerRelativePath] = React.useState<string>(null);
   const [userCanManagePermissions, setUserCanManagePermissions] = React.useState<boolean>(false);
   const [allViews, setAllViews] = React.useState<IViewInfo[]>([]);
@@ -74,28 +75,28 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
       case ShareType.Library:
         let lView = find(allViews, (view) => view.Id === selectedViewId)
         contentUrl = `${document.location.origin}${lView.ServerRelativeUrl}`;
+        //grantTeamMembersAcessToLibrary(teamId, channelId, contentUrl);
         debugger
         break;
       case ShareType.Folder:
         let fview = find(allViews, (view) => view.Id === selectedViewId)
-
+        //grantTeamMembersAcessToFolder(teamId, channelId, folderServerRelativePath, fview.ServerRelativeUrl);
         contentUrl = `${document.location.origin}${fview.ServerRelativeUrl}?id=${folderServerRelativePath}`;
 
         break;
       case ShareType.File:
-        contentUrl = `${item["ServerRedirectedEmbedUrl"]}`;// ugly readonly property
-        contentUrl = `${item["File"]["LinkingUrl"]}`;// opens in word
+
         const sp = spfi().using(SPFx(props.context));
-     
-        contentUrl= await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-        .items.getById(item["Id"]).getWopiFrameUrl(0);//read only in word
-        contentUrl= await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-        .items.getById(item["Id"]).getWopiFrameUrl(1);//update mode in word
-        contentUrl= await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-        .items.getById(item["Id"]).getWopiFrameUrl(2);//read only in word
-        contentUrl= await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-        .items.getById(item["Id"]).getWopiFrameUrl(3);
-       //https://graph.microsoft.com/v1.0/sites/russellwgove.sharepoint.com:/sites/CR-EU-Manufacturing:/drives
+
+        contentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
+          .items.getById(item["Id"]).getWopiFrameUrl(0);//read only in word
+        contentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
+          .items.getById(item["Id"]).getWopiFrameUrl(1);//update mode in word
+        contentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
+          .items.getById(item["Id"]).getWopiFrameUrl(2);//read only in word
+        contentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
+          .items.getById(item["Id"]).getWopiFrameUrl(3);
+        //https://graph.microsoft.com/v1.0/sites/russellwgove.sharepoint.com:/sites/CR-EU-Manufacturing:/drives
         break;
 
     }
@@ -162,8 +163,8 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
       let locShareType: ShareType;
       const sp = spfi().using(SPFx(props.context));
       const urlParams = new URLSearchParams(window.location.search);
-       //TODO: save view enhancements to state and reapply isAscending=true sortField=LinkFilenameFilterFields1=testcol1 FilterValues1=a%3B%23b FilterTypes1=Text       let locFolderServerRelativePath = urlParams.get("id")
-      
+      //TODO: save view enhancements to state and reapply isAscending=true sortField=LinkFilenameFilterFields1=testcol1 FilterValues1=a%3B%23b FilterTypes1=Text       let locFolderServerRelativePath = urlParams.get("id")
+
       let locFolderServerRelativePath = urlParams.get("id")
       const locViewId = urlParams.get("viewid");
       const locListId = props.context.pageContext.list.id.toString();
@@ -177,7 +178,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
           .getById(locListId)
           .items.getById(locItemId)
           .expand("File", "Folder")
-          .select("Id","Title", "EffectiveBasePermissions", "FileSystemObjectType", "ServerRedirectedEmbedUrl", "File/LinkingUrl", "File/ServerRelativeUrl", "Folder/ServerRelativeUrl")
+          .select("Id", "Title", "EffectiveBasePermissions", "FileSystemObjectType", "ServerRedirectedEmbedUrl", "File/LinkingUrl", "File/ServerRelativeUrl", "Folder/ServerRelativeUrl")
           .expand("File", "Folder")
           ();
         setUserCanManagePermissions(sp.web.hasPermissions(locItem["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
@@ -201,9 +202,10 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
           // they are within a folder
           setFolderServerRelativePath(locFolderServerRelativePath);
           setShareType(ShareType.Folder);
-          sp.web.getFolderByServerRelativePath(locFolderServerRelativePath).select("Title", "EffectiveBasePermissions")()
+          sp.web.getFolderByServerRelativePath(locFolderServerRelativePath)
+          .expand("ListItemAllFields/EffectiveBasePermissions")()
             .then(folder => {
-              setUserCanManagePermissions(sp.web.hasPermissions(folder["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
+              setUserCanManagePermissions(sp.web.hasPermissions(folder["ListItemAllFields"]["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
             });
         } else {
           // they are at the root of the list
@@ -244,9 +246,9 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
           selectedTeams={selectedTeams}
           appcontext={props.context}
           itemLimit={1}
-          onSelectedTeams={(tagList: ITag[])=> {
+          onSelectedTeams={(tagList: ITag[]) => {
             setSelectedTeams(tagList);
-          } }
+          }}
         />
 
         <TeamChannelPicker label={`What Channel would you like to share this ${ShareType[shareType]}  to?`}
@@ -254,7 +256,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
           selectedChannels={selectedTeamChannels}
           appcontext={props.context}
           itemLimit={1}
-          onSelectedChannels={(tagList: ITag[])=> {
+          onSelectedChannels={(tagList: ITag[]) => {
             setSelectedTeamChannels(tagList);
           }} />
         <ChoiceGroup
@@ -271,9 +273,9 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
           options={roleDefinitionInfos.map((rd) => {
             return { key: rd.Id.toString(), text: `${rd.Name} (${rd.Description})` };
           })}
-          defaultSelectedKey={selectedViewId}
-          selectedKey={selectedViewId}
-          onChange={(e, o) => { setSelectedViewId(o.key) }}
+          defaultSelectedKey={selectedRoleDefinitionId}
+          selectedKey={selectedRoleDefinitionId}
+          onChange={(e, o) => { setSelectedRoleDefinitionId(parseInt(o.key)) }}
         />
         <TextField label="What would you like the text in the Teams Tab to say?" onChange={(e, newValue) => { setTabName(newValue) }} value={tabName} />
         <PrimaryButton onClick={addTab}> Add Tab to Team</PrimaryButton>
