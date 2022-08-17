@@ -54,13 +54,6 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
   const [tabName, setTabName] = React.useState<string>("");
   const [libraryName, setLibraryName] = React.useState<string>("");
   const [permissionsOnSP, setPermissionsOnSP] = React.useState<IBasePermissions>(null);
-
-  function _onSelectedTeams(tagList: ITag[]) {
-    setSelectedTeams(tagList);
-  };
-  function _onSelectedTeamChannels(tagList: ITag[]) {
-    setSelectedTeamChannels(tagList);
-  }
   async function addTab() {
     const graph = graphfi().using(SPFxGR(props.context));
     debugger;
@@ -169,7 +162,8 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
       let locShareType: ShareType;
       const sp = spfi().using(SPFx(props.context));
       const urlParams = new URLSearchParams(window.location.search);
-
+       //TODO: save view enhancements to state and reapply isAscending=true sortField=LinkFilenameFilterFields1=testcol1 FilterValues1=a%3B%23b FilterTypes1=Text       let locFolderServerRelativePath = urlParams.get("id")
+      
       let locFolderServerRelativePath = urlParams.get("id")
       const locViewId = urlParams.get("viewid");
       const locListId = props.context.pageContext.list.id.toString();
@@ -250,14 +244,19 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
           selectedTeams={selectedTeams}
           appcontext={props.context}
           itemLimit={1}
-          onSelectedTeams={_onSelectedTeams} />
+          onSelectedTeams={(tagList: ITag[])=> {
+            setSelectedTeams(tagList);
+          } }
+        />
 
         <TeamChannelPicker label={`What Channel would you like to share this ${ShareType[shareType]}  to?`}
           teamId={selectedTeams.length > 0 ? selectedTeams[0].key : null}
           selectedChannels={selectedTeamChannels}
           appcontext={props.context}
           itemLimit={1}
-          onSelectedChannels={_onSelectedTeamChannels} />
+          onSelectedChannels={(tagList: ITag[])=> {
+            setSelectedTeamChannels(tagList);
+          }} />
         <ChoiceGroup
           label="Which view would you like to show in the Teams Tab?"
           title="View"
