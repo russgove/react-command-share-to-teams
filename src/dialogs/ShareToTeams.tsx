@@ -55,6 +55,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
   const [allViews, setAllViews] = React.useState<IViewInfo[]>([]);
   const [selectedViewId, setSelectedViewId] = React.useState<string>(null);
   const [tabName, setTabName] = React.useState<string>("");
+  const [title, setTitle] = React.useState<string>("");
   const [libraryName, setLibraryName] = React.useState<string>("");
   const [permissionsOnSP, setPermissionsOnSP] = React.useState<IBasePermissions>(null);
   async function addTab() {
@@ -181,7 +182,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
           .getById(locListId)
           .items.getById(locItemId)
           .expand("File", "Folder")
-          .select("Id", "Title", "EffectiveBasePermissions", "FileSystemObjectType", "ServerRedirectedEmbedUrl", "File/LinkingUrl", "File/ServerRelativeUrl", "Folder/ServerRelativeUrl")
+          .select("Id", "Title", "EffectiveBasePermissions", "FileSystemObjectType", "ServerRedirectedEmbedUrl", "File/Name", "File/LinkingUrl", "File/ServerRelativeUrl", "Folder/ServerRelativeUrl","Folder/Name")
           .expand("File", "Folder")
           ();
         setUserCanManagePermissions(sp.web.hasPermissions(locItem["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
@@ -192,12 +193,14 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
           setShareType(ShareType.Folder);
           setFolderServerRelativePath(locItem["Folder"]["ServerRelativeUrl"]);
           setTabName(props.context.pageContext.list.title);// see if user has permissions to share this folder
+setTitle(`Sharing folder ${locItem["Folder"]["Name"]} to Teams`);
 
         } else {
           // its a document
           setItem(locItem);
           setShareType(ShareType.File);
           setTabName(locItem["File"]["Name"]);
+          setTitle(`Sharing file ${locItem["File"]["Name"]} to Teams`);
         }
       } else {
 
@@ -209,13 +212,15 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
             .expand("ListItemAllFields/EffectiveBasePermissions")()
             .then(folder => {
               setUserCanManagePermissions(sp.web.hasPermissions(folder["ListItemAllFields"]["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
+              setTitle(`Sharing folder ${folder["Name"]} to Teams`);
             });
         } else {
           // they are at the root of the list
           setShareType(ShareType.Library)
           sp.web.lists.getById(locListId).select("Title", "EffectiveBasePermissions")()
-            .then(folder => {
-              setUserCanManagePermissions(sp.web.hasPermissions(folder["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
+            .then(list => {
+              setUserCanManagePermissions(sp.web.hasPermissions(list["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
+              setTitle(`Sharing list ${list["Title"]} to Teams`);
             });
         }
 
@@ -235,23 +240,30 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
   }, []);
   return (
     <DialogContent
-      title={"Share to Teams"}
+      title={title}
       onDismiss={props.close}
       showCloseButton={true}
     >
       <div>
+      {!userCanManagePermissions &&
+    <MessageBar messageBarType={MessageBarType.blocked}>
+     You do not have permission to share this. Please contact a site owner to share.
+    </MessageBar> 
+    }
         ShareType is {ShareType[shareType]}<br />
         Library  is {libraryName}<br />
         folderServerRelativePath is {folderServerRelativePath}<br />
         ViewId is {selectedViewId}<br />
         userCanManagePermissions is {userCanManagePermissions ? "true" : "false"}<br />
         selectedRoleDefinitionId is {selectedRoleDefinitionId}<br />
+        selectedTems.lens {selectedTeam.length}<br />
         canManageTabs is {canManageTabs ? "true" : "false"}<br />
         <TeamPicker label={`What Team would you like to share this ${ShareType[shareType]} to?`}
           selectedTeams={selectedTeam}
           appcontext={props.context}
           itemLimit={1}
-          onSelectedTeams={(tagList: ITag[]) => {
+          
+                   onSelectedTeams={(tagList: ITag[]) => {
             setSelectedTeam(tagList);
             graph.teams.getById(tagList[0].key.toString())()
             .then(team => {
@@ -272,10 +284,10 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
                   }
                   setCanManageTabs(false);
                 })
-                
-               
-                .catch(err => {
-                  console.log(err)
+                .catch(err => { // if you cant get the owners, you ain't an owner
+                  debugger
+                  setCanManageTabs(false);
+                 
                 });
              
               }
