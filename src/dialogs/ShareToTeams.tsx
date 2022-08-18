@@ -23,7 +23,7 @@ import "@pnp/sp/webs";
 import { TeamChannelPicker } from "@pnp/spfx-controls-react/lib/TeamChannelPicker";
 import { TeamPicker } from "@pnp/spfx-controls-react/lib/TeamPicker";
 import { find, forEach } from "lodash";
-import { ChoiceGroup, PrimaryButton } from "office-ui-fabric-react";
+import { ChoiceGroup, Label, Link, MessageBar, MessageBarType, PrimaryButton } from "office-ui-fabric-react";
 import { CommandBar, ICommandBarItemProps } from 'office-ui-fabric-react/lib/CommandBar';
 import { DetailsList, SelectionMode } from "office-ui-fabric-react/lib/DetailsList";
 import { DialogContent } from "office-ui-fabric-react/lib/Dialog";
@@ -287,6 +287,12 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
            
           }}
         />
+   {!canManageTabs && selectedTeam.length>0 &&
+    <MessageBar messageBarType={MessageBarType.error}>
+     You do not have permission to create tabs in this team.
+    </MessageBar> 
+    }
+    
 
         <TeamChannelPicker label={`What Channel would you like to share this ${ShareType[shareType]}  to?`}
           teamId={selectedTeam.length > 0 ? selectedTeam[0].key : null}
@@ -318,7 +324,8 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
           }}
         />
         <TextField label="What would you like the text in the Teams Tab to say?" onChange={(e, newValue) => { setTabName(newValue) }} value={tabName} />
-        <PrimaryButton onClick={addTab}> Add Tab to Team</PrimaryButton>
+        <br />
+        <PrimaryButton disabled={!canManageTabs || selectedTeam.length==0 ||selectedTeamChannels.length ==0 ||tabName.length==0} onClick={addTab}> Add Tab to Team</PrimaryButton>
       </div>
 
 
