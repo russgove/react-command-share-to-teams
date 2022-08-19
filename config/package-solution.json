@@ -3,7 +3,7 @@
     "solution": {
         "name": "react-command-share-to-teams-client-side-solution",
         "id": "98fc8351-80c6-4dd8-9593-aa1127531ef2",
-        "version": "5.0.0.0",
+        "version": "7.0.0.0",
         "includeClientSideAssets": true,
         "isDomainIsolated": false,
         "webApiPermissionRequests": [{

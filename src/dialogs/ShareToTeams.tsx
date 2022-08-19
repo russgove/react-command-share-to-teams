@@ -17,6 +17,8 @@ import { IListInfo } from "@pnp/sp/lists";
 import "@pnp/sp/security";
 import { IBasePermissions, IRoleDefinitionInfo, PermissionKind } from "@pnp/sp/security";
 import "@pnp/sp/security/web";
+import { ISiteUser } from "@pnp/sp/site-users/types";
+import "@pnp/sp/site-users/web";
 import "@pnp/sp/views";
 import { IViewInfo } from "@pnp/sp/views";
 import "@pnp/sp/webs";
@@ -59,17 +61,20 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
   const [title, setTitle] = React.useState<string>("");
   const [libraryName, setLibraryName] = React.useState<string>("");
   const [permissionsOnSP, setPermissionsOnSP] = React.useState<IBasePermissions>(null);
-  async function ensureTeamsUser(sp: SPFI, teamId: string) {
-debugger;
-const group=await graph.groups.getById(teamId)();
-debugger;
+  async function ensureTeamsUser(sp: SPFI, teamId: string): Promise<number> {
+    debugger;
+    // const group = await graph.groups.getById(teamId)();
+    const user = await sp.web.ensureUser(`c:0o.c|federateddirectoryclaimprovider|${teamId}`);
+    return user.data.Id;
   }
   async function grantTeamMembersAcessToLibrary(teamId: string, list: IListInfo, roleDefinitionId: number) {
     const sp = spfi().using(SPFx(props.context));
-    const user=await ensureTeamsUser(sp,teamId);
-    // await sp.web.lists.getById(props.context.pageContext.list.id.toString()).roleAssignments.add(teamId, roleDefinitionId);
-    //   .roles.add(teamId, roleDefinitionId);
-    
+    const userPrincpalId = await ensureTeamsUser(sp, teamId);
+    await sp.web.lists
+    .getById(props.context.pageContext.list.id.toString())
+    .roleAssignments.add(userPrincpalId, roleDefinitionId);
+
+
 
   }
   async function addTab() {
@@ -222,7 +227,7 @@ debugger;
           // they are within a folder
           setFolderServerRelativePath(locFolderServerRelativePath);
           setShareType(ShareType.Folder);
-        await  sp.web.getFolderByServerRelativePath(locFolderServerRelativePath)
+          await sp.web.getFolderByServerRelativePath(locFolderServerRelativePath)
             .expand("ListItemAllFields/EffectiveBasePermissions")()
             .then(folder => {
               setUserCanManagePermissions(sp.web.hasPermissions(folder["ListItemAllFields"]["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
@@ -231,8 +236,8 @@ debugger;
         } else {
           // they are at the root of the list
           setShareType(ShareType.Library)
-       
-         await sp.web.lists.getById(locListId).select("Title", "EffectiveBasePermissions")()
+
+          await sp.web.lists.getById(locListId).select("Title", "EffectiveBasePermissions")()
             .then(list => {
               debugger;
               console.log(list["EffectiveBasePermissions"]);
@@ -249,7 +254,7 @@ debugger;
       setSelectedViewId(locViewId);
       await getListViews(sp, locViewId);
       await getRoleDefs(sp);
-setIsLoading(false);
+      setIsLoading(false);
     }
     // call the function
     fetchData()
