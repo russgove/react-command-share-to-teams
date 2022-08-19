@@ -213,7 +213,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
           // they are within a folder
           setFolderServerRelativePath(locFolderServerRelativePath);
           setShareType(ShareType.Folder);
-          sp.web.getFolderByServerRelativePath(locFolderServerRelativePath)
+        await  sp.web.getFolderByServerRelativePath(locFolderServerRelativePath)
             .expand("ListItemAllFields/EffectiveBasePermissions")()
             .then(folder => {
               setUserCanManagePermissions(sp.web.hasPermissions(folder["ListItemAllFields"]["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
@@ -223,7 +223,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
           // they are at the root of the list
           setShareType(ShareType.Library)
        
-          sp.web.lists.getById(locListId).select("Title", "EffectiveBasePermissions")()
+         await sp.web.lists.getById(locListId).select("Title", "EffectiveBasePermissions")()
             .then(list => {
               debugger;
               console.log(list["EffectiveBasePermissions"]);
