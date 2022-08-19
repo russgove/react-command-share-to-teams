@@ -10,6 +10,7 @@ import "@pnp/graph/teams";
 import "@pnp/graph/users";
 import { SPFI, spfi, SPFx } from "@pnp/sp";
 import "@pnp/sp/folders";
+import { IFolder } from "@pnp/sp/folders";
 import "@pnp/sp/items";
 import { IItem } from "@pnp/sp/items";
 import "@pnp/sp/lists";
@@ -45,7 +46,7 @@ interface IShareToTeamsProps {
 function ShareToTeamsContent(props: IShareToTeamsProps) {
   const graph = graphfi().using(SPFxGR(props.context));
   const [shareType, setShareType] = React.useState<ShareType>(null);
-  const [list, setList] = React.useState<IListInfo>(null);
+
   const [item, setItem] = React.useState<any>(null);
   const [canManageTabs, setCanManageTabs] = React.useState<boolean>(false);
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
@@ -60,32 +61,40 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
   const [tabName, setTabName] = React.useState<string>("");
   const [title, setTitle] = React.useState<string>("");
   const [libraryName, setLibraryName] = React.useState<string>("");
-  const [permissionsOnSP, setPermissionsOnSP] = React.useState<IBasePermissions>(null);
+
   async function ensureTeamsUser(sp: SPFI, teamId: string): Promise<ISiteUserProps> {
     debugger;
     // const group = await graph.groups.getById(teamId)();
     const user = await sp.web.ensureUser(`c:0o.c|federateddirectoryclaimprovider|${teamId}`);
     return user.data;
   }
-  async function grantTeamMembersAcessToLibrary(teamId: string, list: IListInfo, roleDefinitionId: number) {
+  async function grantTeamMembersAcessToLibrary(teamId: string,  roleDefinitionId: number) {
     const sp = spfi().using(SPFx(props.context));
     const siteUser = await ensureTeamsUser(sp, teamId);
-
-    
-const roledefinition = find(roleDefinitionInfos,x => x.Id === roleDefinitionId);
-const teamPermissions= await sp.web.lists
-.getById(props.context.pageContext.list.id.toString()).getUserEffectivePermissions(siteUser.LoginName);
-
-const teamHasPermissions= await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
-console.log(`teamHasPermissions ${teamHasPermissions}`);
-if(!teamHasPermissions){
-    await sp.web.lists
-    .getById(props.context.pageContext.list.id.toString())
-    .roleAssignments.add(siteUser.Id, roleDefinitionId);
-}
-
-
+    const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
+    const teamPermissions = await sp.web.lists
+      .getById(props.context.pageContext.list.id.toString()).getUserEffectivePermissions(siteUser.LoginName);
+    const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
+    console.log(`teamHasPermissions ${teamHasPermissions}`);
+    if (!teamHasPermissions) {
+      await sp.web.lists
+        .getById(props.context.pageContext.list.id.toString())
+        .roleAssignments.add(siteUser.Id, roleDefinitionId);
+    }
   }
+  async function grantTeamMembersAcessToFolder(teamId: string,  roleDefinitionId: number) {
+    const sp = spfi().using(SPFx(props.context));
+    const siteUser = await ensureTeamsUser(sp, teamId);
+    const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
+    const folder = await sp.web.folders.getByUrl(folderServerRelativePath).getItem()
+    const teamPermissions  =await folder.getUserEffectivePermissions(siteUser.LoginName);
+    const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
+    console.log(`teamHasPermissions ${teamHasPermissions}`);
+    if (!teamHasPermissions) {
+      await folder.roleAssignments.add(siteUser.Id, roleDefinitionId);
+    }
+  }
+
   async function addTab() {
 
     debugger;
@@ -106,12 +115,12 @@ if(!teamHasPermissions){
       case ShareType.Library:
         let lView = find(allViews, (view) => view.Id === selectedViewId)
         contentUrl = `${document.location.origin}${lView.ServerRelativeUrl}`;
-        grantTeamMembersAcessToLibrary(teamId, list, selectedRoleDefinitionId);
+        await grantTeamMembersAcessToLibrary(teamId,  selectedRoleDefinitionId);
         debugger
         break;
       case ShareType.Folder:
         let fview = find(allViews, (view) => view.Id === selectedViewId)
-        //grantTeamMembersAcessToFolder(teamId, channelId, folderServerRelativePath, fview.ServerRelativeUrl);
+      // await grantTeamMembersAcessToFolder(teamId,folder ,selectedRoleDefinitionId);
         contentUrl = `${document.location.origin}${fview.ServerRelativeUrl}?id=${folderServerRelativePath}`;
 
         break;
@@ -197,8 +206,8 @@ if(!teamHasPermissions){
       const urlParams = new URLSearchParams(window.location.search);
       //TODO: save view enhancements to state and reapply isAscending=true sortField=LinkFilenameFilterFields1=testcol1 FilterValues1=a%3B%23b FilterTypes1=Text       let locFolderServerRelativePath = urlParams.get("id")
 
-      let locFolderServerRelativePath = urlParams.get("id")
-      const locViewId = urlParams.get("viewid");
+      let folderServerRelativePathFromUrl = urlParams.get("id")
+      const viewIdFromUrl = urlParams.get("viewid");
       const locListId = props.context.pageContext.list.id.toString();
       let locItemId: number;
 
@@ -220,6 +229,7 @@ if(!teamHasPermissions){
 
           setShareType(ShareType.Folder);
           setFolderServerRelativePath(locItem["Folder"]["ServerRelativeUrl"]);
+       
           setTabName(props.context.pageContext.list.title);// see if user has permissions to share this folder
           setTitle(`Sharing folder ${locItem["Folder"]["Name"]} to Teams`);
 
@@ -232,11 +242,12 @@ if(!teamHasPermissions){
         }
       } else {
 
-        if (locFolderServerRelativePath) {
+        if (folderServerRelativePathFromUrl) {
           // they are within a folder
-          setFolderServerRelativePath(locFolderServerRelativePath);
+          setFolderServerRelativePath(folderServerRelativePathFromUrl);
+         
           setShareType(ShareType.Folder);
-          await sp.web.getFolderByServerRelativePath(locFolderServerRelativePath)
+          await sp.web.getFolderByServerRelativePath(folderServerRelativePathFromUrl)
             .expand("ListItemAllFields/EffectiveBasePermissions")()
             .then(folder => {
               setUserCanManagePermissions(sp.web.hasPermissions(folder["ListItemAllFields"]["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
@@ -260,8 +271,8 @@ if(!teamHasPermissions){
 
       setLibraryName(props.context.pageContext.list.title);
 
-      setSelectedViewId(locViewId);
-      await getListViews(sp, locViewId);
+      setSelectedViewId(viewIdFromUrl);
+      await getListViews(sp, viewIdFromUrl);
       await getRoleDefs(sp);
       setIsLoading(false);
     }
@@ -410,6 +421,8 @@ export default class ShareToTeamsDialog extends BaseDialog {
     ReactDOM.unmountComponentAtNode(this.domElement);
   }
 }
+
+
 
 
 
