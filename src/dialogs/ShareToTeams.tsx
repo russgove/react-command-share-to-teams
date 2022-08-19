@@ -92,6 +92,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
     const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
     console.log(`teamHasPermissions ${teamHasPermissions}`);
     if (!teamHasPermissions) {
+      await  folder.breakRoleInheritance(true,false);
       await folder.roleAssignments.add(siteUser.Id, roleDefinitionId);
     }
   }
@@ -100,11 +101,15 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
     const siteUser = await ensureTeamsUser(sp, teamId);
     const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
     const selectedItem = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-      .items.getById(item["Id"]);
+      .items.getById(item["Id"])
+      .select("Id", "Title", "EffectiveBasePermissions", "FileSystemObjectType", "ServerRedirectedEmbedUrl", "File/Name", "File/LinkingUrl", "File/ServerRelativeUrl", "Folder/ServerRelativeUrl", "Folder/Name")
+      ;
+      
     const teamPermissions = await selectedItem.getUserEffectivePermissions(siteUser.LoginName);
     const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
     console.log(`teamHasPermissions ${teamHasPermissions}`);
     if (!teamHasPermissions) {
+    await  selectedItem.breakRoleInheritance(true,false);
       await selectedItem.roleAssignments.add(siteUser.Id, roleDefinitionId);
     }
   }
