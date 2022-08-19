@@ -16,7 +16,7 @@ import { IItem } from "@pnp/sp/items";
 import "@pnp/sp/lists";
 import { IListInfo } from "@pnp/sp/lists";
 import "@pnp/sp/security";
-import { IBasePermissions, IRoleDefinitionInfo, PermissionKind } from "@pnp/sp/security";
+import { IBasePermissions, IRoleDefinitionInfo, PermissionKind, RoleDefinitions } from "@pnp/sp/security";
 import "@pnp/sp/security/web";
 import { ISiteUser, ISiteUserProps } from "@pnp/sp/site-users/types";
 import "@pnp/sp/site-users/web";
@@ -68,10 +68,11 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
     const user = await sp.web.ensureUser(`c:0o.c|federateddirectoryclaimprovider|${teamId}`);
     return user.data;
   }
-  async function grantTeamMembersAcessToLibrary(teamId: string,  roleDefinitionId: number) {
+  async function grantTeamMembersAcessToLibrary(teamId: string, roleDefinitionId: number) {
     const sp = spfi().using(SPFx(props.context));
     const siteUser = await ensureTeamsUser(sp, teamId);
     const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
+
     const teamPermissions = await sp.web.lists
       .getById(props.context.pageContext.list.id.toString()).getUserEffectivePermissions(siteUser.LoginName);
     const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
@@ -82,16 +83,29 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
         .roleAssignments.add(siteUser.Id, roleDefinitionId);
     }
   }
-  async function grantTeamMembersAcessToFolder(teamId: string,  roleDefinitionId: number) {
+  async function grantTeamMembersAcessToFolder(teamId: string, roleDefinitionId: number) {
     const sp = spfi().using(SPFx(props.context));
     const siteUser = await ensureTeamsUser(sp, teamId);
     const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
     const folder = await sp.web.folders.getByUrl(folderServerRelativePath).getItem()
-    const teamPermissions  =await folder.getUserEffectivePermissions(siteUser.LoginName);
+    const teamPermissions = await folder.getUserEffectivePermissions(siteUser.LoginName);
     const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
     console.log(`teamHasPermissions ${teamHasPermissions}`);
     if (!teamHasPermissions) {
       await folder.roleAssignments.add(siteUser.Id, roleDefinitionId);
+    }
+  }
+  async function grantTeamMembersAcessToItem(teamId: string, roleDefinitionId: number) {
+    const sp = spfi().using(SPFx(props.context));
+    const siteUser = await ensureTeamsUser(sp, teamId);
+    const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
+    const selectedItem = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
+      .items.getById(item["Id"]);
+    const teamPermissions = await selectedItem.getUserEffectivePermissions(siteUser.LoginName);
+    const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
+    console.log(`teamHasPermissions ${teamHasPermissions}`);
+    if (!teamHasPermissions) {
+      await selectedItem.roleAssignments.add(siteUser.Id, roleDefinitionId);
     }
   }
 
@@ -115,32 +129,28 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
       case ShareType.Library:
         let lView = find(allViews, (view) => view.Id === selectedViewId)
         contentUrl = `${document.location.origin}${lView.ServerRelativeUrl}`;
-        await grantTeamMembersAcessToLibrary(teamId,  selectedRoleDefinitionId);
+        await grantTeamMembersAcessToLibrary(teamId, selectedRoleDefinitionId);
         debugger
         break;
       case ShareType.Folder:
         let fview = find(allViews, (view) => view.Id === selectedViewId)
-      // await grantTeamMembersAcessToFolder(teamId,folder ,selectedRoleDefinitionId);
+        await grantTeamMembersAcessToFolder(teamId, selectedRoleDefinitionId);
         contentUrl = `${document.location.origin}${fview.ServerRelativeUrl}?id=${folderServerRelativePath}`;
-
         break;
       case ShareType.File:
-
         const sp = spfi().using(SPFx(props.context));
-
-        contentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-          .items.getById(item["Id"]).getWopiFrameUrl(0);//read only in word
-        contentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-          .items.getById(item["Id"]).getWopiFrameUrl(1);//update mode in word
-        contentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-          .items.getById(item["Id"]).getWopiFrameUrl(2);//read only in word
-        contentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-          .items.getById(item["Id"]).getWopiFrameUrl(3);
-        //https://graph.microsoft.com/v1.0/sites/russellwgove.sharepoint.com:/sites/CR-EU-Manufacturing:/drives
+        await grantTeamMembersAcessToItem(teamId, selectedRoleDefinitionId);
+        const roledefinition = find(roleDefinitionInfos, x => x.Id === selectedRoleDefinitionId);
+        if (roledefinition.RoleTypeKind >= 3) { //0-none, 1-guest, 2-reader, 3-contribure, 4-designer, 5-administrator,6 editor https://docs.microsoft.com/en-us/previous-versions/office/sharepoint-csom/ee536725(v=office.15)
+          contentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
+            .items.getById(item["Id"]).getWopiFrameUrl(1);//update mode in word
+        }
+        else {
+          contentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
+            .items.getById(item["Id"]).getWopiFrameUrl(0);//read only in word
+        }
         break;
-
     }
-
     teamsTab.configuration = {
       contentUrl: contentUrl,
     }
@@ -229,7 +239,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
 
           setShareType(ShareType.Folder);
           setFolderServerRelativePath(locItem["Folder"]["ServerRelativeUrl"]);
-       
+
           setTabName(props.context.pageContext.list.title);// see if user has permissions to share this folder
           setTitle(`Sharing folder ${locItem["Folder"]["Name"]} to Teams`);
 
@@ -245,7 +255,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
         if (folderServerRelativePathFromUrl) {
           // they are within a folder
           setFolderServerRelativePath(folderServerRelativePathFromUrl);
-         
+
           setShareType(ShareType.Folder);
           await sp.web.getFolderByServerRelativePath(folderServerRelativePathFromUrl)
             .expand("ListItemAllFields/EffectiveBasePermissions")()
