@@ -222,15 +222,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
         } else {
           // they are at the root of the list
           setShareType(ShareType.Library)
-          await sp.web.lists.getById(locListId).getCurrentUserEffectivePermissions()
-            .then(permissions => {
-              debugger;
-              console.log(permissions);
-              const userCanManagePermissions =sp.web.hasPermissions(permissions, PermissionKind.ManagePermissions);
-              setUserCanManagePermissions(userCanManagePermissions);
-            }).catch(err => {
-              debugger;
-            });
+       
           sp.web.lists.getById(locListId).select("Title", "EffectiveBasePermissions")()
             .then(list => {
               debugger;
