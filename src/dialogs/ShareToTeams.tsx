@@ -78,6 +78,9 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
     const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
     console.log(`teamHasPermissions ${teamHasPermissions}`);
     if (!teamHasPermissions) {
+      await  await sp.web.lists
+      .getById(props.context.pageContext.list.id.toString())
+      .breakRoleInheritance(true,false);
       await sp.web.lists
         .getById(props.context.pageContext.list.id.toString())
         .roleAssignments.add(siteUser.Id, roleDefinitionId);
@@ -87,7 +90,8 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
     const sp = spfi().using(SPFx(props.context));
     const siteUser = await ensureTeamsUser(sp, teamId);
     const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
-    const folder = await sp.web.folders.getByUrl(folderServerRelativePath).getItem()
+    //const folders = await sp.web.folders.getByUrl(folderServerRelativePath).getItem()
+    const folder = await sp.web.getFolderByServerRelativePath(folderServerRelativePath).getItem()
     const teamPermissions = await folder.getUserEffectivePermissions(siteUser.LoginName);
     const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
     console.log(`teamHasPermissions ${teamHasPermissions}`);
@@ -101,9 +105,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
     const siteUser = await ensureTeamsUser(sp, teamId);
     const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
     const selectedItem = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-      .items.getById(item["Id"])
-      .select("Id", "Title", "EffectiveBasePermissions", "FileSystemObjectType", "ServerRedirectedEmbedUrl", "File/Name", "File/LinkingUrl", "File/ServerRelativeUrl", "Folder/ServerRelativeUrl", "Folder/Name")
-      ;
+      .items.getById(item["Id"]);
       
     const teamPermissions = await selectedItem.getUserEffectivePermissions(siteUser.LoginName);
     const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
@@ -322,11 +324,12 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
           itemLimit={1}
 
           onSelectedTeams={(tagList: ITag[]) => {
-            setSelectedTeam(tagList);
+            setSelectedTeamChannels([]);
             graph.teams.getById(tagList[0].key.toString())()
               .then(team => {
                 debugger;
                 if (team.memberSettings.allowCreateUpdateRemoveTabs) {
+                  setSelectedTeam(tagList);
                   setCanManageTabs(true);
                 }
                 else {
@@ -340,10 +343,12 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
                           return;
                         }
                       }
+                      setSelectedTeam(tagList);
                       setCanManageTabs(false);
                     })
                     .catch(err => { // if you cant get the owners, you ain't an owner
                       debugger
+                      setSelectedTeam(tagList);
                       setCanManageTabs(false);
 
                     });
@@ -371,6 +376,17 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
           onSelectedChannels={(tagList: ITag[]) => {
             setSelectedTeamChannels(tagList);
           }} />
+           <ChoiceGroup // so this just occurred to me!!!!!!
+
+          label="How wouold you like to share this?"
+          title="View"
+          options={[
+            {key:"1", text: "In a tab(good forever)", },
+            {key:"2", text: "In a chat(with an exparation", } // could us a sharing link to share this in a chat maybe???
+          ]}
+          selectedKey="1"
+          
+        />
         <ChoiceGroup
           label="Which view would you like to show in the Teams Tab?"
           title="View"
