@@ -8,7 +8,7 @@ import "@pnp/graph/";
 import "@pnp/graph/groups";
 import "@pnp/graph/teams";
 import "@pnp/graph/users";
-import { spfi, SPFx } from "@pnp/sp";
+import { SPFI, spfi, SPFx } from "@pnp/sp";
 import "@pnp/sp/folders";
 import "@pnp/sp/items";
 import { IItem } from "@pnp/sp/items";
@@ -59,8 +59,17 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
   const [title, setTitle] = React.useState<string>("");
   const [libraryName, setLibraryName] = React.useState<string>("");
   const [permissionsOnSP, setPermissionsOnSP] = React.useState<IBasePermissions>(null);
+  async function ensureTeamsUser(sp: SPFI, teamId: string) {
+debugger;
+const group=await graph.groups.getById(teamId)();
+debugger;
+  }
   async function grantTeamMembersAcessToLibrary(teamId: string, list: IListInfo, roleDefinitionId: number) {
-
+    const sp = spfi().using(SPFx(props.context));
+    const user=await ensureTeamsUser(sp,teamId);
+    // await sp.web.lists.getById(props.context.pageContext.list.id.toString()).roleAssignments.add(teamId, roleDefinitionId);
+    //   .roles.add(teamId, roleDefinitionId);
+    
 
   }
   async function addTab() {
@@ -387,6 +396,8 @@ export default class ShareToTeamsDialog extends BaseDialog {
     ReactDOM.unmountComponentAtNode(this.domElement);
   }
 }
+
+
 
 
 
