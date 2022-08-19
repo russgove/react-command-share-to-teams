@@ -17,7 +17,7 @@ import { IListInfo } from "@pnp/sp/lists";
 import "@pnp/sp/security";
 import { IBasePermissions, IRoleDefinitionInfo, PermissionKind } from "@pnp/sp/security";
 import "@pnp/sp/security/web";
-import { ISiteUser } from "@pnp/sp/site-users/types";
+import { ISiteUser, ISiteUserProps } from "@pnp/sp/site-users/types";
 import "@pnp/sp/site-users/web";
 import "@pnp/sp/views";
 import { IViewInfo } from "@pnp/sp/views";
@@ -61,19 +61,28 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
   const [title, setTitle] = React.useState<string>("");
   const [libraryName, setLibraryName] = React.useState<string>("");
   const [permissionsOnSP, setPermissionsOnSP] = React.useState<IBasePermissions>(null);
-  async function ensureTeamsUser(sp: SPFI, teamId: string): Promise<number> {
+  async function ensureTeamsUser(sp: SPFI, teamId: string): Promise<ISiteUserProps> {
     debugger;
     // const group = await graph.groups.getById(teamId)();
     const user = await sp.web.ensureUser(`c:0o.c|federateddirectoryclaimprovider|${teamId}`);
-    return user.data.Id;
+    return user.data;
   }
   async function grantTeamMembersAcessToLibrary(teamId: string, list: IListInfo, roleDefinitionId: number) {
     const sp = spfi().using(SPFx(props.context));
-    const userPrincpalId = await ensureTeamsUser(sp, teamId);
+    const siteUser = await ensureTeamsUser(sp, teamId);
+
+    
+const roledefinition = find(roleDefinitionInfos,x => x.Id === roleDefinitionId);
+const teamPermissions= await sp.web.lists
+.getById(props.context.pageContext.list.id.toString()).getUserEffectivePermissions(siteUser.LoginName);
+
+const teamHasPermissions= await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
+console.log(`teamHasPermissions ${teamHasPermissions}`);
+if(!teamHasPermissions){
     await sp.web.lists
     .getById(props.context.pageContext.list.id.toString())
-    .roleAssignments.add(userPrincpalId, roleDefinitionId);
-
+    .roleAssignments.add(siteUser.Id, roleDefinitionId);
+}
 
 
   }
