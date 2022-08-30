@@ -1,25 +1,26 @@
-import { override } from '@microsoft/decorators';
-import { Log } from '@microsoft/sp-core-library';
-import ShareToTeamsDialog, {} from "../../dialogs/ShareToTeams";
+import { override } from "@microsoft/decorators";
+import { Log } from "@microsoft/sp-core-library";
+import ShareToTeamsDialog from "../../dialogs/ShareToTeams";
 import {
   BaseListViewCommandSet,
   Command,
   IListViewCommandSetListViewUpdatedParameters,
-  IListViewCommandSetExecuteEventParameters
-} from '@microsoft/sp-listview-extensibility';
-import { Dialog } from '@microsoft/sp-dialog';
+  IListViewCommandSetExecuteEventParameters,
+} from "@microsoft/sp-listview-extensibility";
+import { Dialog } from "@microsoft/sp-dialog";
 import {
   AadHttpClient,
   HttpClientResponse,
+  MSGraphClient,
   AadHttpClientConfiguration,
 } from "@microsoft/sp-http";
 
 import "@pnp/graph/users";
 import { spfi, SPFx } from "@pnp/sp";
 
-import * as strings from 'ShareToTeamsCommandSetStrings';
-import { graphfi } from '@pnp/graph';
-import { SPFx as SPFxgr } from '@pnp/graph';
+import * as strings from "ShareToTeamsCommandSetStrings";
+import { graphfi } from "@pnp/graph";
+import { SPFx as SPFxgr } from "@pnp/graph";
 
 /**
  * If your command set uses the ClientSideComponentProperties JSON input,
@@ -32,21 +33,27 @@ export interface IShareToTeamsCommandSetProperties {
   sampleTextTwo: string;
 }
 
-const LOG_SOURCE: string = 'ShareToTeamsCommandSet';
+const LOG_SOURCE: string = "ShareToTeamsCommandSet";
 
 export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShareToTeamsCommandSetProperties> {
- // private aadHttpClient: AadHttpClient;
+  private msGraphClient: MSGraphClient;
   @override
   public async onInit(): Promise<void> {
-    debugger;
-   
     await super.onInit();
-   
+    await this.context.msGraphClientFactory
+      .getClient()
+      .then((client: MSGraphClient): void => {
+        this.msGraphClient = client;
+      });
   }
 
   @override
-  public onListViewUpdated(event: IListViewCommandSetListViewUpdatedParameters): void {
-    const shareToTeamsCommand: Command = this.tryGetCommand('COMMAND_SHARE_TO_TEAMS');
+  public onListViewUpdated(
+    event: IListViewCommandSetListViewUpdatedParameters
+  ): void {
+    const shareToTeamsCommand: Command = this.tryGetCommand(
+      "COMMAND_SHARE_TO_TEAMS"
+    );
     if (shareToTeamsCommand) {
       // This command should be hidden unless exactly one row is selected.
       shareToTeamsCommand.visible = event.selectedRows.length <= 1;
@@ -56,11 +63,11 @@ export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShar
   @override
   public onExecute(event: IListViewCommandSetExecuteEventParameters): void {
     switch (event.itemId) {
-      case 'COMMAND_SHARE_TO_TEAMS':
-       this.cmdShareToTeams(event);
-         break;
+      case "COMMAND_SHARE_TO_TEAMS":
+        this.cmdShareToTeams(event);
+        break;
       default:
-        throw new Error('Unknown command');
+        throw new Error("Unknown command");
     }
   }
 
@@ -69,6 +76,7 @@ export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShar
     dialog.title = `CHECK STATUS`;
     dialog.context = this.context;
     dialog.event = event;
+    dialog.msGraphClient = this.msGraphClient;
     dialog.show();
   }
 }

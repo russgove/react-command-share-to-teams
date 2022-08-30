@@ -5,3 +5,9 @@ export enum ShareType {
 
 }
 
+export enum ShareMethod {
+    ChannelTab = 0,
+    ChannelMessage = 1
+    
+
+}
