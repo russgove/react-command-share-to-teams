@@ -200,6 +200,15 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
         teamsTab.configuration = {
           contentUrl: contentUrl,
         }
+        //teams app ids:(https://docs.microsoft.com/en-us/graph/teams-configuring-builtin-tabs)
+        //com.microsoft.teamspace.tab.files.sharepoint  documment library tab
+        //2a527703-1f6f-4559-a332-d8a7d288cd88 is SharePoint page and list tabs
+        //com.microsoft.teamspace.tab.file.staticviewer.word
+        //com.microsoft.teamspace.tab.file.staticviewer.excel
+        //com.microsoft.teamspace.tab.file.staticviewer.powerpoint
+        //com.microsoft.teamspace.tab.file.staticviewer.pdf
+        //
+
         const newTab = channelTabs.add('Tab', 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88', teamsTab)
           .then((t) => {
             ;
