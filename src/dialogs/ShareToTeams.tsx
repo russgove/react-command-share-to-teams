@@ -14,6 +14,7 @@ import "@pnp/graph/users";
 import "@pnp/graph/onedrive"
 
 import { SPFI, spfi, SPFx } from "@pnp/sp";
+import { Caching } from "@pnp/queryable";
 import "@pnp/sp/folders";
 import "@pnp/sp/items";
 import { IItem } from "@pnp/sp/items";
@@ -372,6 +373,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
           .select("Id", "Title", "EffectiveBasePermissions", "FileSystemObjectType", "ServerRedirectedEmbedUrl", "File/Name", "File/LinkingUrl", "File/ServerRelativeUrl", "Folder/ServerRelativeUrl", "Folder/Name")
           .expand("File", "Folder")
           ();
+          console.log(locItem["EffectiveBasePermissions"]);
         setUserCanManagePermissions(sp.web.hasPermissions(locItem["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
 
         if (locItem["FileSystemObjectType"] == 1) {
