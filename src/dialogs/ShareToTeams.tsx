@@ -125,198 +125,155 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
     }
   }
 
-  async function shareToTeams() {
-
-    debugger;
-    console.log(`sharemethod is ${shareMethod} `)
-    const teamId: string = selectedTeam[0].key as string;
-    const channelId: string = selectedTeamChannels[0].key as string;
-    console.log(`TEAM ID is ${teamId}. CHANNEL ID is ${channelId}`);
-    const team = await graph.teams.getById(teamId)();
-    console.log(team);
-    const channel = await graph.teams.getById(teamId).channels.getById(channelId);
-    console.log(channel);
-    const channelTabs = await graph.teams.getById(teamId).channels.getById(channelId).tabs;
-    console.log(channelTabs);
-
-    let contentUrl = "";
+  async function getTeamsTabConfig(): Promise<TeamsTab> {
+    const teamsTab: TeamsTab = { displayName: tabName };
     switch (shareType) {
       case ShareType.Library:
         let lView = find(allViews, (view) => view.Id === selectedViewId)
-        contentUrl = `${document.location.origin}${lView.ServerRelativeUrl}`;
-        await grantTeamMembersAcessToLibrary(teamId, selectedRoleDefinitionId);
-
+        const libContentUrl = `${document.location.origin}${lView.ServerRelativeUrl}`;
+        teamsTab.configuration = {
+          contentUrl: libContentUrl,
+        }
         break;
       case ShareType.Folder:
         let fview = find(allViews, (view) => view.Id === selectedViewId)
-        await grantTeamMembersAcessToFolder(teamId, selectedRoleDefinitionId);
-        contentUrl = `${document.location.origin}${fview.ServerRelativeUrl}?id=${folderServerRelativePath}`;
+        let folderContentUrl = `${document.location.origin}${fview.ServerRelativeUrl}?id=${folderServerRelativePath}`;
+        teamsTab.configuration = {
+          contentUrl: folderContentUrl,
+        }
         break;
       case ShareType.File:
         const sp = spfi().using(SPFx(props.context));
-        await grantTeamMembersAcessToItem(teamId, selectedRoleDefinitionId);
         const roledefinition = find(roleDefinitionInfos, x => x.Id === selectedRoleDefinitionId);
+        let fileContentUrl = "";
         if (roledefinition.RoleTypeKind >= 3) { //0-none, 1-guest, 2-reader, 3-contribure, 4-designer, 5-administrator,6 editor https://docs.microsoft.com/en-us/previous-versions/office/sharepoint-csom/ee536725(v=office.15)
-          contentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
+          fileContentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
             .items.getById(item["Id"]).getWopiFrameUrl(1);//update mode in word
         }
         else {
-          contentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
+          fileContentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
             .items.getById(item["Id"]).getWopiFrameUrl(0);//read only in word
+        }
+        teamsTab.configuration = {
+          contentUrl: fileContentUrl,
         }
         break;
     }
+    return teamsTab;
+  }
+  async function getChatMessageConfig(): Promise<ChatMessage> {
+    let chatMessage: ChatMessage = {}
+    switch (shareType) {
+      case ShareType.Library:
+        alert("cannot share libraryu in cjat")
+        break;
+      case ShareType.Folder:
+        alert("cannot share  folder in cjat")
+        break;
+      case ShareType.File:
+        const site = graph.sites.getById(props.context.pageContext.site.id.toString());
+        console.log(site);
 
+
+        const drives: Drive[] = await Site(site, "drives?$select=name,id")();
+        const drivex = find(drives, (d) => { return d.name === libraryName });
+        console.log(drives);
+        console.log(drivex);
+        const fileLibraryRelativeUrl = item.File.ServerRelativeUrl.replace(library["RootFolder"]["ServerRelativeUrl"], '');
+        const driveItem: DriveItem = await Site(site, `drives/${drivex.id}/root:${fileLibraryRelativeUrl}`)() as DriveItem;
+        console.log(driveItem);
+        // driveitem.tag looks like this:"{A24C417C-469A-4CE8-B176-C254D44E67FB},10" (WITH the quotes...wtf)
+        const attachId = driveItem.eTag.replace("\"", "").split(",")[0].replace("{", "").replace("}", "");
+        chatMessage = {
+          "body": {
+            "contentType": "html",
+            "content": `${chatMessageText} <attachment id="${attachId}"></attachment>`
+          },
+          "attachments": [
+            {
+              "id": attachId,
+              "contentType": "reference",
+              "contentUrl": document.location.origin + item.File.ServerRelativeUrl,
+              "name": driveItem.name
+            }
+          ]
+        }
+        break;
+    }
+    return chatMessage;
+  }
+  function getAppUrl(): string {
+    //teams app ids:(https://docs.microsoft.com/en-us/graph/teams-configuring-builtin-tabs)
+    //com.microsoft.teamspace.tab.files.sharepoint  documment library tab
+    //2a527703-1f6f-4559-a332-d8a7d288cd88 is SharePoint page and list tabs
+    //com.microsoft.teamspace.tab.file.staticviewer.word
+    //com.microsoft.teamspace.tab.file.staticviewer.excel
+    //com.microsoft.teamspace.tab.file.staticviewer.powerpoint
+    //com.microsoft.teamspace.tab.file.staticviewer.pdf
+    //
+    let AppUrl = "";
+    switch (shareType) {
+      case ShareType.Folder:
+        AppUrl = 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88';
+        break;
+      case ShareType.File:
+        AppUrl = 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88';
+        break;
+      case ShareType.Library:
+        AppUrl = 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88';
+        break;
+    }
+    return AppUrl;
+  }
+  async function shareToTeams() {
+
+    debugger;
+    const teamId: string = selectedTeam[0].key as string;
+    const channelId: string = selectedTeamChannels[0].key as string;
+    const channel = await graph.teams.getById(teamId).channels.getById(channelId);
+    const channelTabs = await graph.teams.getById(teamId).channels.getById(channelId).tabs;
     switch (shareMethod) {
       case ShareMethod.ChannelTab:
+        let teamsTab: TeamsTab = await getTeamsTabConfig();
+        let appUrl: string = getAppUrl()
+        teamsTab.displayName = tabName;
         switch (shareType) {
           case ShareType.Library:
-            let lView = find(allViews, (view) => view.Id === selectedViewId)
-            contentUrl = `${document.location.origin}${lView.ServerRelativeUrl}`;
             await grantTeamMembersAcessToLibrary(teamId, selectedRoleDefinitionId);
-
             break;
           case ShareType.Folder:
-            let fview = find(allViews, (view) => view.Id === selectedViewId)
             await grantTeamMembersAcessToFolder(teamId, selectedRoleDefinitionId);
-            contentUrl = `${document.location.origin}${fview.ServerRelativeUrl}?id=${folderServerRelativePath}`;
             break;
           case ShareType.File:
-            const sp = spfi().using(SPFx(props.context));
             await grantTeamMembersAcessToItem(teamId, selectedRoleDefinitionId);
-            const roledefinition = find(roleDefinitionInfos, x => x.Id === selectedRoleDefinitionId);
-            if (roledefinition.RoleTypeKind >= 3) { //0-none, 1-guest, 2-reader, 3-contribure, 4-designer, 5-administrator,6 editor https://docs.microsoft.com/en-us/previous-versions/office/sharepoint-csom/ee536725(v=office.15)
-              contentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-                .items.getById(item["Id"]).getWopiFrameUrl(1);//update mode in word
-            }
-            else {
-              contentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-                .items.getById(item["Id"]).getWopiFrameUrl(0);//read only in word
-            }
             break;
         }
-        const teamsTab: TeamsTab = {} as TeamsTab;
-        teamsTab.displayName = tabName;
-        teamsTab.configuration = {
-          contentUrl: contentUrl,
-        }
-        //teams app ids:(https://docs.microsoft.com/en-us/graph/teams-configuring-builtin-tabs)
-        //com.microsoft.teamspace.tab.files.sharepoint  documment library tab
-        //2a527703-1f6f-4559-a332-d8a7d288cd88 is SharePoint page and list tabs
-        //com.microsoft.teamspace.tab.file.staticviewer.word
-        //com.microsoft.teamspace.tab.file.staticviewer.excel
-        //com.microsoft.teamspace.tab.file.staticviewer.powerpoint
-        //com.microsoft.teamspace.tab.file.staticviewer.pdf
-        //
-
-        const newTab = channelTabs.add('Tab', 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88', teamsTab)
+        const newTab = channelTabs.add('Tab', appUrl, teamsTab)
           .then((t) => {
-            ;
-            console.log(t);
             channel.messages({ body: { content: `I added a new tab named (${tabName}) to this channel that points to the ${ShareType[shareType]} at ` } });
-          })
-          .catch(err => {
-            debugger;
-            console.log(err);
-
-            alert(err.message);
           });
         console.log(newTab);
 
         break;
       case ShareMethod.ChannelMessage:
         debugger;
+        let chatMessage: ChatMessage = await getChatMessageConfig();
+
         switch (shareType) {
           case ShareType.Library:
-            let lView = find(allViews, (view) => view.Id === selectedViewId)
-            contentUrl = `${document.location.origin}${lView.ServerRelativeUrl}`;
             await grantTeamMembersAcessToLibrary(teamId, selectedRoleDefinitionId);
-
             break;
-          case ShareType.Folder:
-            let fview = find(allViews, (view) => view.Id === selectedViewId)
+
+            case ShareType.Folder:
             await grantTeamMembersAcessToFolder(teamId, selectedRoleDefinitionId);
-            contentUrl = `${document.location.origin}${fview.ServerRelativeUrl}?id=${folderServerRelativePath}`;
             break;
-          case ShareType.File:
-            const sp = spfi().using(SPFx(props.context));
+
+            case ShareType.File:
             await grantTeamMembersAcessToItem(teamId, selectedRoleDefinitionId);
-            const roledefinition = find(roleDefinitionInfos, x => x.Id === selectedRoleDefinitionId);
-            // if (roledefinition.RoleTypeKind >= 3) { //0-none, 1-guest, 2-reader, 3-contribure, 4-designer, 5-administrator,6 editor https://docs.microsoft.com/en-us/previous-versions/office/sharepoint-csom/ee536725(v=office.15)
-            //   contentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-            //     .items.getById(item["Id"]).getWopiFrameUrl(1);//update mode in word
-            // }
-            // else {
-            //   contentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-            //     .items.getById(item["Id"]).getWopiFrameUrl(0);//read only in word
-            // }
-            // break;
-            debugger;
-            //   var xx= await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-            //  .items.getById(item["Id"])();
-            //  console.log(xx);
-            const site = graph.sites.getById(props.context.pageContext.site.id.toString());
-            console.log(site);
-
-
-            const drives: Drive[] = await Site(site, "drives?$select=name,id")();
-            const drivex = find(drives, (d) => { return d.name === libraryName });
-            console.log(drives);
-            console.log(drivex);
-            const fileLibraryRelativeUrl = item.File.ServerRelativeUrl.replace(library["RootFolder"]["ServerRelativeUrl"], '');
-            const xx = item.File.ServerRelativeUrl;
-            const yy = library;
-            const driveItem: DriveItem = await Site(site, `drives/${drivex.id}/root:${fileLibraryRelativeUrl}`)() as DriveItem;
-            console.log(driveItem);
-            //https://graph.microsoft.com/v1.0/sites/049287e5-abd9-472d-828b-a0a591ca2421/drives/b!5YeSBNmrLUeCi6ClkcokIWcka02ycMZGqKHIqkDxvJozzReesE47Q5803vvEzgkc/root:/folder1/er.docx
-
-            // const xz=drives[0].items;
-
-            //  const xxx=await graph.sites.getById(props.context.pageContext.site.id.toString()).drives()
-            //  const drives = await graph.sites.getById('contoso.sharepoint.com').drives.get();
-            //  console.log(site);
-            //  console.log(site.drives);
-            // driveite.tag looks like this:"{A24C417C-469A-4CE8-B176-C254D44E67FB},10" (WITH the quotes...wtf)
-            const attachId = driveItem.eTag.replace("\"", "").split(",")[0].replace("{", "").replace("}", "");
-            const chatMessage: ChatMessage = {
-              "body": {
-                "contentType": "html",
-                "content": `${chatMessageText} <attachment id="${attachId}"></attachment>`
-              },
-              "attachments": [
-                {
-                  "id": attachId,
-                  "contentType": "reference",
-                  "contentUrl": document.location.origin + item.File.ServerRelativeUrl,
-                  "name": driveItem.name
-                }
-              ]
-            }
-            channel.messages(chatMessage);
-
-            debugger;
-
+            break;
         }
-        // const chatMessage:ChatMessage={
-        //   "subject": null,
-        //   "body": {
-        //       "contentType": "html",
-        //       "content": "<attachment id=\"74d20c7f34aa4a7fb74e2b30004247c5\"></attachment>"
-        //   },
-        //   "attachments": [
-        //       {
-        //           "id": "74d20c7f34aa4a7fb74e2b30004247c5",
-        //           "contentType": "application/vnd.microsoft.card.thumbnail",
-        //           "contentUrl": contentUrl, // this does not work
-        //         //  "content": "{\r\n  \"title\": \"This is an example of posting a card\",\r\n  \"subtitle\": \"<h3>This is the subtitle</h3>\",\r\n  \"text\": \"Here is some body text. <br>\\r\\nAnd a <a href=\\\"http://microsoft.com/\\\">hyperlink</a>. <br>\\r\\nAnd below that is some buttons:\",\r\n  \"buttons\": [\r\n    {\r\n      \"type\": \"messageBack\",\r\n      \"title\": \"Login to FakeBot\",\r\n      \"text\": \"login\",\r\n      \"displayText\": \"login\",\r\n      \"value\": \"login\"\r\n    }\r\n  ]\r\n}",
-        //           "name": null,
-        //           "thumbnailUrl": null
-        //       }
-        //   ]
-        // };
-
-
         debugger;
+        channel.messages(chatMessage);
         break;
       default:
         alert('Invalid Share Method')
@@ -382,7 +339,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
           .select("Id", "Title", "EffectiveBasePermissions", "FileSystemObjectType", "ServerRedirectedEmbedUrl", "File/Name", "File/LinkingUrl", "File/ServerRelativeUrl", "Folder/ServerRelativeUrl", "Folder/Name")
           .expand("File", "Folder")
           ();
-          console.log(locItem["EffectiveBasePermissions"]);
+        console.log(locItem["EffectiveBasePermissions"]);
         setUserCanManagePermissions(sp.web.hasPermissions(locItem["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
 
         if (locItem["FileSystemObjectType"] == 1) {
@@ -537,7 +494,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
 
 
         />
-        {(shareType === ShareType.Folder || shareType === ShareType.Library )&&
+        {(shareType === ShareType.Folder || shareType === ShareType.Library) &&
           <ChoiceGroup
             label="Which view would you like to show in the Teams Tab?"
             title="View"
@@ -615,6 +572,7 @@ export default class ShareToTeamsDialog extends BaseDialog {
     ReactDOM.unmountComponentAtNode(this.domElement);
   }
 }
+
 
 
 
