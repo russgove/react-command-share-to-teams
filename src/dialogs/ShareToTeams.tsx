@@ -275,12 +275,20 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
     const teamsTab: TeamsTab = { displayName: tabName };
     switch (shareType) {
       case ShareType.Library:
-        let lView = find(allViews, (view) => view.Id === selectedViewId)
-        const libContentUrl = `${document.location.origin}${lView.ServerRelativeUrl}`;
+        //TODO: Add an option to switch methods here an in the file share
+        // let lView = find(allViews, (view) => view.Id === selectedViewId)
+        // const libContentUrl = `${document.location.origin}${lView.ServerRelativeUrl}`;
+        // teamsTab.configuration = {
+        //   contentUrl: libContentUrl,
+        // }
+        // return [teamsTab, 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88'];
+        // above shows the library in the page viewer. We get some of the view commands. contenturl need to be the url of the library itself.you 'DONT get the open in Sharepoint option.When you open a doc the contents open in the current tab taking over the full screen.
+        // Below is the native teams view. no commands. contenturl is the url of a view. But you DO get the open in sharepoint option. When you open a doc it opens in a new TAB
+
         teamsTab.configuration = {
-          contentUrl: libContentUrl,
+          contentUrl: `${document.location.origin}${library["RootFolder"]["ServerRelativeUrl"]}`,
         }
-        return [teamsTab, 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88'];
+        return [teamsTab, 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/com.microsoft.teamspace.tab.files.sharepoint'];
 
       case ShareType.Folder:
         let fview = find(allViews, (view) => view.Id === selectedViewId)
