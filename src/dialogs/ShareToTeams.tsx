@@ -14,7 +14,6 @@ import "@pnp/graph/users";
 import "@pnp/graph/onedrive"
 
 import { SPFI, spfi, SPFx } from "@pnp/sp";
-import { Caching } from "@pnp/queryable";
 import "@pnp/sp/folders";
 import "@pnp/sp/items";
 import { IItem } from "@pnp/sp/items";
@@ -71,11 +70,151 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
   const [library, setLibrary] = React.useState<IList>(null);
   const [chatMessageText, setChatMessageText] = React.useState<string>("");
 
+  useEffect(() => {
+    // declare the data fetching function
+    const fetchData = async () => {
+     const sp = spfi().using(SPFx(props.context));
+      const urlParams = new URLSearchParams(window.location.search);
+      //TODO: save view enhancements to state and reapply isAscending=true sortField=LinkFilenameFilterFields1=testcol1 FilterValues1=a%3B%23b FilterTypes1=Text       let locFolderServerRelativePath = urlParams.get("id")
+      let folderServerRelativePathFromUrl = urlParams.get("id")
+      const viewIdFromUrl = urlParams.get("viewid");
+      const locListId = props.context.pageContext.list.id.toString();
+      let locItemId: number;
+      setLibrary(await await sp.web.lists
+        .getById(locListId).expand('RootFolder')());
+
+      //  figure out what type of share we are dealing with
+      if (props.event.selectedRows.length === 1) {
+        locItemId = parseInt(props.event.selectedRows[0].getValueByName("ID"))
+        // they selected an item. Need to see if its a folder or a documnent
+        let locItem: IItem = await sp.web.lists
+          .getById(locListId)
+          .items.getById(locItemId)
+          .expand("File", "Folder")
+          .select("GUID", "Id", "Title", "EffectiveBasePermissions", "File_x0020_Type", "FileSystemObjectType", "ServerRedirectedEmbedUrl", "File/Name", "File/LinkingUrl", "File/ServerRelativeUrl", "Folder/ServerRelativeUrl", "Folder/Name")
+          .expand("File", "Folder")
+          ();
+
+        setUserCanManagePermissions(sp.web.hasPermissions(locItem["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
+
+        if (locItem["FileSystemObjectType"] == 1) {
+          // its a folder
+
+          setShareType(ShareType.Folder);
+          setFolderServerRelativePath(locItem["Folder"]["ServerRelativeUrl"]);
+
+          setTabName(props.context.pageContext.list.title);// see if user has permissions to share this folder
+          setTitle(`Sharing folder ${locItem["Folder"]["Name"]} to Teams`);
+
+        } else {
+          // its a document
+          setItem(locItem);
+          setShareType(ShareType.File);
+          setTabName(locItem["File"]["Name"]);
+          setTitle(`Sharing file ${locItem["File"]["Name"]} to Teams`);
+        }
+      } else {
+
+        if (folderServerRelativePathFromUrl) {
+          // they are within a folder
+          setFolderServerRelativePath(folderServerRelativePathFromUrl);
+
+          setShareType(ShareType.Folder);
+          await sp.web.getFolderByServerRelativePath(folderServerRelativePathFromUrl)
+            .expand("ListItemAllFields/EffectiveBasePermissions")()
+            .then(folder => {
+              setUserCanManagePermissions(sp.web.hasPermissions(folder["ListItemAllFields"]["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
+              setTitle(`Sharing folder ${folder["Name"]} to Teams`);
+            });
+        } else {
+          // they are at the root of the list
+          setShareType(ShareType.Library)
+
+          await sp.web.lists.getById(locListId).select("Title", "EffectiveBasePermissions")()
+            .then(list => {
+
+
+              const userCanManagePermissions = (sp.web.hasPermissions(list["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
+              setUserCanManagePermissions(userCanManagePermissions);
+              setTitle(`Sharing list ${list["Title"]} to Teams`);
+            });
+        }
+
+      }
+
+      setLibraryName(props.context.pageContext.list.title);
+
+      setSelectedViewId(viewIdFromUrl);
+      await getListViews(sp, viewIdFromUrl);
+      await getRoleDefs(sp);
+      setIsLoading(false);
+    }
+    // call the function
+    fetchData()
+      // make sure to catch any error
+      .catch(console.error);
+  }, []);
   async function ensureTeamsUser(sp: SPFI, teamId: string): Promise<ISiteUserProps> {
 
     // const group = await graph.groups.getById(teamId)();
     const user = await sp.web.ensureUser(`c:0o.c|federateddirectoryclaimprovider|${teamId}`);
     return user.data;
+  }
+  async function shareToTeams() {
+
+    debugger;
+    const teamId: string = selectedTeam[0].key as string;
+    const channelId: string = selectedTeamChannels[0].key as string;
+    const channel = await graph.teams.getById(teamId).channels.getById(channelId);
+    const channelTabs = await graph.teams.getById(teamId).channels.getById(channelId).tabs;
+    switch (shareMethod) {
+      case ShareMethod.ChannelTab:
+        let [teamsTab, appUrl] = await getTeamsTabConfig();
+        teamsTab.displayName = tabName;
+        switch (shareType) {
+          case ShareType.Library:
+            await grantTeamMembersAcessToLibrary(teamId, selectedRoleDefinitionId);
+            break;
+          case ShareType.Folder:
+            await grantTeamMembersAcessToFolder(teamId, selectedRoleDefinitionId);
+            break;
+          case ShareType.File:
+            await grantTeamMembersAcessToItem(teamId, selectedRoleDefinitionId);
+            break;
+        }
+       await channelTabs.add('Tab', appUrl, teamsTab)
+          .then((t) => {
+            channel.messages({ body: { content: `I added a new tab named (${tabName}) to this channel that points to the ${ShareType[shareType]} at ` } });
+          })
+          .catch((e) => {
+            debugger;
+            alert(e.message);
+          });
+
+
+        break;
+      case ShareMethod.ChannelMessage:
+        let chatMessage: ChatMessage = await getChatMessageConfig();
+
+        switch (shareType) {
+          case ShareType.Library:
+            await grantTeamMembersAcessToLibrary(teamId, selectedRoleDefinitionId);
+            break;
+
+          case ShareType.Folder:
+            await grantTeamMembersAcessToFolder(teamId, selectedRoleDefinitionId);
+            break;
+
+          case ShareType.File:
+            await grantTeamMembersAcessToItem(teamId, selectedRoleDefinitionId);
+            break;
+        }
+
+        channel.messages(chatMessage);
+        break;
+      default:
+        alert('Invalid Share Method')
+    }
   }
   async function grantTeamMembersAcessToLibrary(teamId: string, roleDefinitionId: number) {
     const sp = spfi().using(SPFx(props.context));
@@ -99,7 +238,6 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
     const sp = spfi().using(SPFx(props.context));
     const siteUser = await ensureTeamsUser(sp, teamId);
     const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
-    //const folders = await sp.web.folders.getByUrl(folderServerRelativePath).getItem()
     const folder = await sp.web.getFolderByServerRelativePath(folderServerRelativePath).getItem()
     const teamPermissions = await folder.getUserEffectivePermissions(siteUser.LoginName);
     const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
@@ -193,7 +331,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
             appurl = 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/com.microsoft.teamspace.tab.file.staticviewer.pptx';
             break;
           default:
-            // maybe will work for text
+            // maybe will work for text. works for doc and xls
             appurl = 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88';
         }
 
@@ -242,86 +380,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
     }
     return chatMessage;
   }
-  // function getAppUrl(): string {
-  //   //teams app ids:(https://docs.microsoft.com/en-us/graph/teams-configuring-builtin-tabs)
-  //   //com.microsoft.teamspace.tab.files.sharepoint  documment library tab
-  //   //2a527703-1f6f-4559-a332-d8a7d288cd88 is SharePoint page and list tabs
-  //   //com.microsoft.teamspace.tab.file.staticviewer.word
-  //   //com.microsoft.teamspace.tab.file.staticviewer.excel
-  //   //com.microsoft.teamspace.tab.file.staticviewer.powerpoint
-  //   //com.microsoft.teamspace.tab.file.staticviewer.pdf
-  //   //
-  //   let AppUrl = "";
-  //   switch (shareType) {
-  //     case ShareType.Folder:
-  //       AppUrl = 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88';
-  //       break;
-  //     case ShareType.File:
-  //       AppUrl = 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88';
-  //       break;
-  //     case ShareType.Library:
-  //       AppUrl = 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88';
-  //       break;
-  //   }
-  //   return AppUrl;
-  // }
-  async function shareToTeams() {
-
-    debugger;
-    const teamId: string = selectedTeam[0].key as string;
-    const channelId: string = selectedTeamChannels[0].key as string;
-    const channel = await graph.teams.getById(teamId).channels.getById(channelId);
-    const channelTabs = await graph.teams.getById(teamId).channels.getById(channelId).tabs;
-    switch (shareMethod) {
-      case ShareMethod.ChannelTab:
-        let [teamsTab, appUrl] = await getTeamsTabConfig();
-        teamsTab.displayName = tabName;
-        switch (shareType) {
-          case ShareType.Library:
-            await grantTeamMembersAcessToLibrary(teamId, selectedRoleDefinitionId);
-            break;
-          case ShareType.Folder:
-            await grantTeamMembersAcessToFolder(teamId, selectedRoleDefinitionId);
-            break;
-          case ShareType.File:
-            await grantTeamMembersAcessToItem(teamId, selectedRoleDefinitionId);
-            break;
-        }
-        const newTab = await channelTabs.add('Tab', appUrl, teamsTab)
-          .then((t) => {
-            channel.messages({ body: { content: `I added a new tab named (${tabName}) to this channel that points to the ${ShareType[shareType]} at ` } });
-          })
-          .catch((e) => {
-            debugger;
-            alert(e.message);
-          });
-
-
-        break;
-      case ShareMethod.ChannelMessage:
-
-        let chatMessage: ChatMessage = await getChatMessageConfig();
-
-        switch (shareType) {
-          case ShareType.Library:
-            await grantTeamMembersAcessToLibrary(teamId, selectedRoleDefinitionId);
-            break;
-
-          case ShareType.Folder:
-            await grantTeamMembersAcessToFolder(teamId, selectedRoleDefinitionId);
-            break;
-
-          case ShareType.File:
-            await grantTeamMembersAcessToItem(teamId, selectedRoleDefinitionId);
-            break;
-        }
-
-        channel.messages(chatMessage);
-        break;
-      default:
-        alert('Invalid Share Method')
-    }
-  }
+  
   async function getRoleDefs(sp) {
     // get the role definitions for the current web -- now full condtrol or designer
     await sp.web.roleDefinitions
@@ -356,92 +415,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
         }
       });
   }
-  useEffect(() => {
-    // declare the data fetching function
-    const fetchData = async () => {
-      let locShareType: ShareType;
-      const sp = spfi().using(SPFx(props.context));
-      const urlParams = new URLSearchParams(window.location.search);
-      //TODO: save view enhancements to state and reapply isAscending=true sortField=LinkFilenameFilterFields1=testcol1 FilterValues1=a%3B%23b FilterTypes1=Text       let locFolderServerRelativePath = urlParams.get("id")
 
-      let folderServerRelativePathFromUrl = urlParams.get("id")
-      const viewIdFromUrl = urlParams.get("viewid");
-      const locListId = props.context.pageContext.list.id.toString();
-      let locItemId: number;
-      setLibrary(await await sp.web.lists
-        .getById(locListId).expand('RootFolder')());
-
-      //  figure out what type of share we are dealing with
-      if (props.event.selectedRows.length === 1) {
-        locItemId = parseInt(props.event.selectedRows[0].getValueByName("ID"))
-        // they selected an item. Need to see if its a folder or a documnent
-        let locItem: IItem = await sp.web.lists
-          .getById(locListId)
-          .items.getById(locItemId)
-          .expand("File", "Folder")
-          .select("GUID", "Id", "Title", "EffectiveBasePermissions", "File_x0020_Type", "FileSystemObjectType", "ServerRedirectedEmbedUrl", "File/Name", "File/LinkingUrl", "File/ServerRelativeUrl", "Folder/ServerRelativeUrl", "Folder/Name")
-          .expand("File", "Folder")
-          ();
-
-        setUserCanManagePermissions(sp.web.hasPermissions(locItem["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
-
-        if (locItem["FileSystemObjectType"] == 1) {
-          // its a folder
-
-          setShareType(ShareType.Folder);
-          setFolderServerRelativePath(locItem["Folder"]["ServerRelativeUrl"]);
-
-          setTabName(props.context.pageContext.list.title);// see if user has permissions to share this folder
-          setTitle(`Sharing folder ${locItem["Folder"]["Name"]} to Teams`);
-
-        } else {
-          // its a document
-          setItem(locItem);
-          setShareType(ShareType.File);
-          setTabName(locItem["File"]["Name"]);
-          setTitle(`Sharing file ${locItem["File"]["Name"]} to Teams`);
-        }
-      } else {
-
-        if (folderServerRelativePathFromUrl) {
-          // they are within a folder
-          setFolderServerRelativePath(folderServerRelativePathFromUrl);
-
-          setShareType(ShareType.Folder);
-          await sp.web.getFolderByServerRelativePath(folderServerRelativePathFromUrl)
-            .expand("ListItemAllFields/EffectiveBasePermissions")()
-            .then(folder => {
-              setUserCanManagePermissions(sp.web.hasPermissions(folder["ListItemAllFields"]["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
-              setTitle(`Sharing folder ${folder["Name"]} to Teams`);
-            });
-        } else {
-          // they are at the root of the list
-          setShareType(ShareType.Library)
-
-          await sp.web.lists.getById(locListId).select("Title", "EffectiveBasePermissions")()
-            .then(list => {
-
-
-              const userCanManagePermissions = (sp.web.hasPermissions(list["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
-              setUserCanManagePermissions(userCanManagePermissions);
-              setTitle(`Sharing list ${list["Title"]} to Teams`);
-            });
-        }
-
-      }
-
-      setLibraryName(props.context.pageContext.list.title);
-
-      setSelectedViewId(viewIdFromUrl);
-      await getListViews(sp, viewIdFromUrl);
-      await getRoleDefs(sp);
-      setIsLoading(false);
-    }
-    // call the function
-    fetchData()
-      // make sure to catch any error
-      .catch(console.error);
-  }, []);
   return (
     <DialogContent
       title={title}
@@ -454,7 +428,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
             You do not have permission to share this. Please contact a site owner to share.
           </MessageBar>
         }
-        ShareType is {ShareType[shareType]}<br />
+        {/* ShareType is {ShareType[shareType]}<br />
         ShareType is {ShareMethod[shareMethod]}<br />
         Library  is {libraryName}<br />
         folderServerRelativePath is {folderServerRelativePath}<br />
@@ -462,7 +436,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
         userCanManagePermissions is {userCanManagePermissions ? "true" : "false"}<br />
         selectedRoleDefinitionId is {selectedRoleDefinitionId}<br />
         selectedTems.lens {selectedTeam.length}<br />
-        canManageTabs is {canManageTabs ? "true" : "false"}<br />
+        canManageTabs is {canManageTabs ? "true" : "false"}<br /> */}
         <TeamPicker label={`What Team would you like to share this ${ShareType[shareType]} to?`}
           selectedTeams={selectedTeam}
           appcontext={props.context}
