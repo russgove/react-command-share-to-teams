@@ -3,10 +3,10 @@
     "solution": {
         "name": "Share to Teams",
         "id": "98fc8351-80c6-4dd8-9593-aa1127531ef2",
-        "version": "12.0.0.0",
+        "version": "14.0.0.0",
         "includeClientSideAssets": true,
 
-        "skipFeatureDeployment": false,
+        "skipFeatureDeployment": true,
         "isDomainIsolated": false,
         "webApiPermissionRequests": [{
                 "resource": "Microsoft Graph",
