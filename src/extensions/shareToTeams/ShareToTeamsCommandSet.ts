@@ -96,7 +96,7 @@ export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShar
             // at root
             shareToTeamsCommand.visible = this.properties.allowListSharing;
           }
-          shareToTeamsCommand.visible = true;
+         
         }
       }
     }
