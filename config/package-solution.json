@@ -1,18 +1,22 @@
 {
     "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
     "solution": {
-        "name": "react-command-share-to-teams-client-side-solution",
+        "name": "Share to Teams",
         "id": "98fc8351-80c6-4dd8-9593-aa1127531ef2",
-        "version": "9.0.0.0",
+        "version": "11.0.0.0",
         "includeClientSideAssets": true,
+
+        "skipFeatureDeployment": false,
         "isDomainIsolated": false,
         "webApiPermissionRequests": [{
                 "resource": "Microsoft Graph",
                 "scope": "ChannelMessage.Send"
-            }, {
+            },
+            {
                 "resource": "Microsoft Graph",
                 "scope": "Team.ReadBasic.All"
-            }, {
+            },
+            {
                 "resource": "Microsoft Graph",
                 "scope": "Channel.ReadBasic.All"
             },
@@ -39,10 +43,10 @@
         ],
         "metadata": {
             "shortDescription": {
-                "default": "react-command-share-to-teams description"
+                "default": "Allows people to Share items with Teams"
             },
             "longDescription": {
-                "default": "react-command-share-to-teams description"
+                "default": "This component allows users to share SharePoint Lists and Librares, Folders and FIles with members of a team. Permisions to the Lists and Librares, Folders and Files are granted to the Teams members, and a Chat Message or Tab is added to the selected Teams Channel"
             },
             "screenshotPaths": [],
             "videoUrl": "",
@@ -56,8 +60,8 @@
             "mpnId": ""
         },
         "features": [{
-            "title": "Application Extension - Deployment of custom action.",
-            "description": "Deploys a custom action with ClientSideComponentId association",
+            "title": "Application Extension - Share to Teams.",
+            "description": "Deploys a custom action to let users share FIles and Folders to Teams",
             "id": "b1814e4d-46eb-4aab-9cc4-df952d0a4b56",
             "version": "1.0.0.0",
             "assets": {

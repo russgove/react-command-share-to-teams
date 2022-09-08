@@ -2,10 +2,10 @@
 <Elements xmlns="http://schemas.microsoft.com/sharepoint/">
     <CustomAction
         Title="ShareToTeams"
-        RegistrationId="100"
+        RegistrationId="101"
         RegistrationType="List"
         Location="ClientSideExtension.ListViewCommandSet.CommandBar"
         ClientSideComponentId="02b09893-193a-47bb-85e6-0280fbfd41dc"
-        ClientSideComponentProperties="{&quot;sampleTextOne&quot;:&quot;One item is selected in the list.&quot;, &quot;sampleTextTwo&quot;:&quot;This command is always visible.&quot;}">
+        ClientSideComponentProperties="{&quot;supportedFileTypes&quot;: &quot;doc, docx, pdf, ppsx, ppt, pptx, jpg, jpeg, png, xls, xlsx, txt, html, gif&quot;,&quot;allowListShareing&quot;:true,&quot;allowFolderShareing&quot;:true,&quot;allowFileShareing&quot;:true,&quot;librarySharingMethod&quot;:&quot;page&quot;,&quot;folderSharingMethod&quot;:&quot;native&quot;}">
     </CustomAction>
 </Elements>

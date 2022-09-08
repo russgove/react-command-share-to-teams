@@ -9,8 +9,12 @@
                 "02b09893-193a-47bb-85e6-0280fbfd41dc": {
                     "location": "ClientSideExtension.ListViewCommandSet.CommandBar",
                     "properties": {
-                        "sampleTextOne": "One item is selected in the list",
-                        "sampleTextTwo": "This command is always visible."
+                        "supportedFileTypes": "doc, docx, pdf, ppsx, ppt, pptx, jpg, jpeg, png, xls, xlsx, txt, html, gif",
+                        "allowListShareing": true,
+                        "allowFolderShareing": true,
+                        "allowFileShareing": true,
+                        "librarySharingMethod": "page",
+                        "folderSharingMethod": "native"
                     }
                 }
             }
@@ -21,8 +25,13 @@
                 "02b09893-193a-47bb-85e6-0280fbfd41dc": {
                     "location": "ClientSideExtension.ListViewCommandSet.CommandBar",
                     "properties": {
-                        "sampleTextOne": "One item is selected in the list",
-                        "sampleTextTwo": "This command is always visible."
+                        "supportedFileTypes": "doc, docx, pdf, ppsx, ppt, pptx, jpg, jpeg, png, xls, xlsx, txt, html, gif",
+                        "allowListShareing": true,
+                        "allowFolderShareing": true,
+                        "allowFileShareing": true,
+                        "librarySharingMethod": "page",
+                        "folderSharingMethod": "native"
+
                     }
                 }
             }
