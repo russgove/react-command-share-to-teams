@@ -2,6 +2,7 @@ import { ChatMessage, Drive, DriveItem, TeamsTab } from "@microsoft/microsoft-gr
 import { BaseComponentContext } from "@microsoft/sp-component-base";
 import { BaseDialog, IDialogConfiguration } from "@microsoft/sp-dialog";
 import { MSGraphClient } from "@microsoft/sp-http";
+import { IShareToTeamsCommandSetProperties } from "../extensions/shareToTeams/ShareToTeamsCommandSet";
 import { IListViewCommandSetExecuteEventParameters } from "@microsoft/sp-listview-extensibility";
 import { graphfi, SPFx as SPFxGR } from "@pnp/graph";
 import "@pnp/graph/";
@@ -48,6 +49,7 @@ interface IShareToTeamsProps {
   msGraphClient: MSGraphClient;
   context: BaseComponentContext;
   event: IListViewCommandSetExecuteEventParameters;
+  settings:IShareToTeamsCommandSetProperties;
 }
 function ShareToTeamsContent(props: IShareToTeamsProps) {
   const graph = graphfi().using(SPFxGR(props.context));
@@ -73,7 +75,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
   useEffect(() => {
     // declare the data fetching function
     const fetchData = async () => {
-     const sp = spfi().using(SPFx(props.context));
+      const sp = spfi().using(SPFx(props.context));
       const urlParams = new URLSearchParams(window.location.search);
       //TODO: save view enhancements to state and reapply isAscending=true sortField=LinkFilenameFilterFields1=testcol1 FilterValues1=a%3B%23b FilterTypes1=Text       let locFolderServerRelativePath = urlParams.get("id")
       let folderServerRelativePathFromUrl = urlParams.get("id")
@@ -182,7 +184,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
             await grantTeamMembersAcessToItem(teamId, selectedRoleDefinitionId);
             break;
         }
-       await channelTabs.add('Tab', appUrl, teamsTab)
+        await channelTabs.add('Tab', appUrl, teamsTab)
           .then((t) => {
             channel.messages({ body: { content: `I added a new tab named (${tabName}) to this channel that points to the ${ShareType[shareType]} at ` } });
           })
@@ -388,7 +390,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
     }
     return chatMessage;
   }
-  
+
   async function getRoleDefs(sp) {
     // get the role definitions for the current web -- now full condtrol or designer
     await sp.web.roleDefinitions
@@ -572,12 +574,14 @@ export default class ShareToTeamsDialog extends BaseDialog {
   public event: IListViewCommandSetExecuteEventParameters;
   public msGraphClient: MSGraphClient;
   public context: BaseComponentContext;
+  public settings:IShareToTeamsCommandSetProperties;
   public render(): void {
     ReactDOM.render(
       <ShareToTeamsContent
         event={this.event}
         msGraphClient={this.msGraphClient}
         title="SS"
+        settings={this.settings}
         context={this.context}
         close={this.close}
       />,

@@ -10,9 +10,9 @@
                     "location": "ClientSideExtension.ListViewCommandSet.CommandBar",
                     "properties": {
                         "supportedFileTypes": "doc, docx, pdf, ppsx, ppt, pptx, jpg, jpeg, png, xls, xlsx, txt, html, gif",
-                        "allowListShareing": true,
-                        "allowFolderShareing": true,
-                        "allowFileShareing": true,
+                        "allowListSharing": true,
+                        "allowFolderSharing": true,
+                        "allowFileSharing": true,
                         "librarySharingMethod": "page",
                         "folderSharingMethod": "native"
                     }
@@ -26,9 +26,9 @@
                     "location": "ClientSideExtension.ListViewCommandSet.CommandBar",
                     "properties": {
                         "supportedFileTypes": "doc, docx, pdf, ppsx, ppt, pptx, jpg, jpeg, png, xls, xlsx, txt, html, gif",
-                        "allowListShareing": true,
-                        "allowFolderShareing": true,
-                        "allowFileShareing": true,
+                        "allowListSharing": true,
+                        "allowFolderSharing": true,
+                        "allowFileSharing": true,
                         "librarySharingMethod": "page",
                         "folderSharingMethod": "native"
 

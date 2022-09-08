@@ -18,7 +18,7 @@
     "items": {
         "COMMAND_SHARE_TO_TEAMS": {
             "title": { "default": "Share to Teams" },
-            "iconImageUrl": "icons/request.png",
+            "iconImageUrl": "https://russellwgove.sharepoint.com/sites/CDN/Images1/spfx-app-Icons/teams.png",
             "type": "command"
         }
 

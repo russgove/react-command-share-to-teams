@@ -28,9 +28,12 @@ import { SPFx as SPFxgr } from "@pnp/graph";
  * You can define an interface to describe it.
  */
 export interface IShareToTeamsCommandSetProperties {
-  // This is an example; replace with your own properties
-  sampleTextOne: string;
-  sampleTextTwo: string;
+  supportedFileTypes: string; //tenantproperties?
+  allowListSharing: boolean;
+  allowFolderSharing: boolean;
+  allowFileSharing: boolean;
+  librarySharingMethod: string;
+  folderSharingMethod: string;
 }
 
 const LOG_SOURCE: string = "ShareToTeamsCommandSet";
@@ -54,9 +57,48 @@ export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShar
     const shareToTeamsCommand: Command = this.tryGetCommand(
       "COMMAND_SHARE_TO_TEAMS"
     );
+    debugger;
     if (shareToTeamsCommand) {
-      // This command should be hidden unless exactly one row is selected.
-      shareToTeamsCommand.visible = event.selectedRows.length <= 1;
+      if (event.selectedRows.length == 1) {
+        // 
+        switch (event.selectedRows[0].getValueByName("FSObjType")) {
+          //one row selected
+          case "0":
+            //its a file
+            if (
+              this.properties.supportedFileTypes.indexOf(
+                event.selectedRows[0].getValueByName("File_x0020_Type")
+              ) !== -1 &&
+              this.properties.allowFileSharing
+            ) {
+              shareToTeamsCommand.visible = true;
+            } else {
+              shareToTeamsCommand.visible = false;
+            }
+            break;
+          case "1":
+            //its a folder
+            shareToTeamsCommand.visible = this.properties.allowFolderSharing;
+            break;
+          default:
+            shareToTeamsCommand.visible = false;
+        }
+      } else {
+        if (event.selectedRows.length > 1 || event.selectedRows.length < 0) {
+          shareToTeamsCommand.visible = false;
+        } else {
+          //no rows selected are they at the top or in a folder
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.get("id")){
+            // in a folder
+            shareToTeamsCommand.visible = this.properties.allowFolderSharing;
+          } else{
+            // at root
+            shareToTeamsCommand.visible = this.properties.allowListSharing;
+          }
+          shareToTeamsCommand.visible = true;
+        }
+      }
     }
   }
 
@@ -75,6 +117,7 @@ export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShar
     const dialog: ShareToTeamsDialog = new ShareToTeamsDialog();
     dialog.title = `CHECK STATUS`;
     dialog.context = this.context;
+    dialog.settings = this.properties;
     dialog.event = event;
     dialog.msGraphClient = this.msGraphClient;
     dialog.show();
