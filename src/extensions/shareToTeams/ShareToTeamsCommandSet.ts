@@ -32,8 +32,9 @@ export interface IShareToTeamsCommandSetProperties {
   allowListSharing: boolean;
   allowFolderSharing: boolean;
   allowFileSharing: boolean;
-  librarySharingMethod: string;
+  librarySharingMethod: string; // "native" attempts to use the navis teams app. "page" just opens a sharepoint page
   folderSharingMethod: string;
+  fileSharingMethod: string;
 }
 
 const LOG_SOURCE: string = "ShareToTeamsCommandSet";

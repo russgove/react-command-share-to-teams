@@ -251,60 +251,71 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
 
 
       case ShareType.Folder:
-        let fview = find(allViews, (view) => view.Id === selectedViewId)
-        let folderContentUrl = `${document.location.origin}${fview.ServerRelativeUrl}?id=${folderServerRelativePath}`;
-        teamsTab.configuration = {
-          contentUrl: folderContentUrl,
-        }
-        return [teamsTab, 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88'];
-
+        // switch (props.settings.librarySharingMethod) {
+        //   case "page":
+            let fview = find(allViews, (view) => view.Id === selectedViewId)
+            let folderContentUrl = `${document.location.origin}${fview.ServerRelativeUrl}?id=${folderServerRelativePath}`;
+            teamsTab.configuration = {
+              contentUrl: folderContentUrl,
+            }
+            return [teamsTab, 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88'];
+          //   break;
+          // case "native":
+          //   // OK, so this is not working. I would need to give the user api level access to the library. Not worth the effort!
+          //   teamsTab.configuration = {
+          //     contentUrl: `${document.location.origin}${library["RootFolder"]["ServerRelativeUrl"]}`,
+          //   }
+          //   return [teamsTab, 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/com.microsoft.teamspace.tab.files.sharepoint'];
+          //   break;
+        // }
       case ShareType.File:
-        // const sp = spfi().using(SPFx(props.context));
-        // const roledefinition = find(roleDefinitionInfos, x => x.Id === selectedRoleDefinitionId);
-        // let fileContentUrl = "";
-        // if (roledefinition.RoleTypeKind >= 3) { //0-none, 1-guest, 2-reader, 3-contribure, 4-designer, 5-administrator,6 editor https://docs.microsoft.com/en-us/previous-versions/office/sharepoint-csom/ee536725(v=office.15)
-        //   fileContentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-        //     .items.getById(item["Id"]).getWopiFrameUrl(1);//update mode in word
-        // }
-        // else {
-        //   fileContentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-        //     .items.getById(item["Id"]).getWopiFrameUrl(0);//read only in word
-        // }
-        // teamsTab.configuration = {
-        //   contentUrl: fileContentUrl,
-        // }
-        // return [teamsTab,'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88'];
-
-        //*
-        //* Use Above  code instead of below if you want to open in  a WOPI Frame
-        //*
-
-        debugger;
+        switch (props.settings.fileSharingMethod) {
+          case "native":
+            debugger;
+            teamsTab.configuration = {
+              contentUrl: `${document.location.origin}${item["File"]["ServerRelativeUrl"]}`,
+              entityId: null // dont believe the docs
+            }
+            var appurl: string = null;
+            switch (item['File_x0020_Type']) {
+              case "docx":
+                appurl = 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/com.microsoft.teamspace.tab.file.staticviewer.word';
+                break;
+              case "xlsx":
+                appurl = 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/com.microsoft.teamspace.tab.file.staticviewer.excel';
+                break;
+              case "pdf":
+                appurl = 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/com.microsoft.teamspace.tab.file.staticviewer.pdf';
+                break;
+              case "pptx":
+                appurl = 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/com.microsoft.teamspace.tab.file.staticviewer.pptx';
+                break;
+              default:
+                // maybe will work for text. works for doc and xls
+                appurl = 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88';
+            }
+    
+            return [teamsTab, appurl]
+    
+    case "page":
+    
+        const sp = spfi().using(SPFx(props.context));
+        const roledefinition = find(roleDefinitionInfos, x => x.Id === selectedRoleDefinitionId);
+        let fileContentUrl = "";
+        if (roledefinition.RoleTypeKind >= 3) { //0-none, 1-guest, 2-reader, 3-contribure, 4-designer, 5-administrator,6 editor https://docs.microsoft.com/en-us/previous-versions/office/sharepoint-csom/ee536725(v=office.15)
+          fileContentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
+            .items.getById(item["Id"]).getWopiFrameUrl(1);//update mode in word
+        }
+        else {
+          fileContentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
+            .items.getById(item["Id"]).getWopiFrameUrl(0);//read only in word
+        }
         teamsTab.configuration = {
-          contentUrl: `${document.location.origin}${item["File"]["ServerRelativeUrl"]}`,
-          entityId: null // dont believe the docs
+          contentUrl: fileContentUrl,
         }
-        var appurl: string = null;
-        switch (item['File_x0020_Type']) {
-          case "docx":
-            appurl = 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/com.microsoft.teamspace.tab.file.staticviewer.word';
-            break;
-          case "xlsx":
-            appurl = 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/com.microsoft.teamspace.tab.file.staticviewer.excel';
-            break;
-          case "pdf":
-            appurl = 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/com.microsoft.teamspace.tab.file.staticviewer.pdf';
-            break;
-          case "pptx":
-            appurl = 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/com.microsoft.teamspace.tab.file.staticviewer.pptx';
-            break;
-          default:
-            // maybe will work for text. works for doc and xls
-            appurl = 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88';
-        }
-
-        return [teamsTab, appurl]
-
+        return [teamsTab,'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88'];
+          }
+        
 
     }
 
