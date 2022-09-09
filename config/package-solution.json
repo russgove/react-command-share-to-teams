@@ -3,7 +3,7 @@
     "solution": {
         "name": "Share to Teams",
         "id": "98fc8351-80c6-4dd8-9593-aa1127531ef2",
-        "version": "14.0.0.0",
+        "version": "16.0.0.0",
         "includeClientSideAssets": true,
 
         "skipFeatureDeployment": true,
@@ -66,7 +66,6 @@
             "version": "1.0.0.0",
             "assets": {
                 "elementManifests": [
-                    "elements.xml",
                     "ClientSideInstance.xml"
                 ]
             }

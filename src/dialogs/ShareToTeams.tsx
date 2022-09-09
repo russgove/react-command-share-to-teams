@@ -49,7 +49,7 @@ interface IShareToTeamsProps {
   msGraphClient: MSGraphClient;
   context: BaseComponentContext;
   event: IListViewCommandSetExecuteEventParameters;
-  settings:IShareToTeamsCommandSetProperties;
+  settings: IShareToTeamsCommandSetProperties;
 }
 function ShareToTeamsContent(props: IShareToTeamsProps) {
   const graph = graphfi().using(SPFxGR(props.context));
@@ -217,54 +217,8 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
       default:
         alert('Invalid Share Method')
     }
+    props.close();
   }
-  async function grantTeamMembersAcessToLibrary(teamId: string, roleDefinitionId: number) {
-    const sp = spfi().using(SPFx(props.context));
-    const siteUser = await ensureTeamsUser(sp, teamId);
-    const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
-
-    const teamPermissions = await sp.web.lists
-      .getById(props.context.pageContext.list.id.toString()).getUserEffectivePermissions(siteUser.LoginName);
-    const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
-
-    if (!teamHasPermissions) {
-      await await sp.web.lists
-        .getById(props.context.pageContext.list.id.toString())
-        .breakRoleInheritance(true, false);
-      await sp.web.lists
-        .getById(props.context.pageContext.list.id.toString())
-        .roleAssignments.add(siteUser.Id, roleDefinitionId);
-    }
-  }
-  async function grantTeamMembersAcessToFolder(teamId: string, roleDefinitionId: number) {
-    const sp = spfi().using(SPFx(props.context));
-    const siteUser = await ensureTeamsUser(sp, teamId);
-    const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
-    const folder = await sp.web.getFolderByServerRelativePath(folderServerRelativePath).getItem()
-    const teamPermissions = await folder.getUserEffectivePermissions(siteUser.LoginName);
-    const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
-
-    if (!teamHasPermissions) {
-      await folder.breakRoleInheritance(true, false);
-      await folder.roleAssignments.add(siteUser.Id, roleDefinitionId);
-    }
-  }
-  async function grantTeamMembersAcessToItem(teamId: string, roleDefinitionId: number) {
-    const sp = spfi().using(SPFx(props.context));
-    const siteUser = await ensureTeamsUser(sp, teamId);
-    const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
-    const selectedItem = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-      .items.getById(item["Id"]);
-
-    const teamPermissions = await selectedItem.getUserEffectivePermissions(siteUser.LoginName);
-    const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
-
-    if (!teamHasPermissions) {
-      await selectedItem.breakRoleInheritance(true, false);
-      await selectedItem.roleAssignments.add(siteUser.Id, roleDefinitionId);
-    }
-  }
-
   async function getTeamsTabConfig(): Promise<[TeamsTab, string]> {
     //teams app ids:(https://docs.microsoft.com/en-us/graph/teams-configuring-builtin-tabs)
     //com.microsoft.teamspace.tab.files.sharepoint  documment library tab
@@ -277,20 +231,24 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
     const teamsTab: TeamsTab = { displayName: tabName };
     switch (shareType) {
       case ShareType.Library:
-        //TODO: Add an option to switch methods here an in the file share
-        // let lView = find(allViews, (view) => view.Id === selectedViewId)
-        // const libContentUrl = `${document.location.origin}${lView.ServerRelativeUrl}`;
-        // teamsTab.configuration = {
-        //   contentUrl: libContentUrl,
-        // }
-        // return [teamsTab, 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88'];
-        // above shows the library in the page viewer. We get some of the view commands. contenturl need to be the url of the library itself.you 'DONT get the open in Sharepoint option.When you open a doc the contents open in the current tab taking over the full screen.
-        // Below is the native teams view. no commands. contenturl is the url of a view. But you DO get the open in sharepoint option. When you open a doc it opens in a new TAB
+        switch (props.settings.librarySharingMethod) {
+          case "native":
+            teamsTab.configuration = {
+              contentUrl: `${document.location.origin}${library["RootFolder"]["ServerRelativeUrl"]}`,
+            }
+            return [teamsTab, 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/com.microsoft.teamspace.tab.files.sharepoint'];
+            break;
+          case "page":
+            let lView = find(allViews, (view) => view.Id === selectedViewId)
+            const libContentUrl = `${document.location.origin}${lView.ServerRelativeUrl}`;
+            teamsTab.configuration = {
+              contentUrl: libContentUrl,
+            }
+            return [teamsTab, 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88'];
+            break;
 
-        teamsTab.configuration = {
-          contentUrl: `${document.location.origin}${library["RootFolder"]["ServerRelativeUrl"]}`,
         }
-        return [teamsTab, 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/com.microsoft.teamspace.tab.files.sharepoint'];
+
 
       case ShareType.Folder:
         let fview = find(allViews, (view) => view.Id === selectedViewId)
@@ -390,6 +348,54 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
     }
     return chatMessage;
   }
+
+  async function grantTeamMembersAcessToLibrary(teamId: string, roleDefinitionId: number) {
+    const sp = spfi().using(SPFx(props.context));
+    const siteUser = await ensureTeamsUser(sp, teamId);
+    const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
+
+    const teamPermissions = await sp.web.lists
+      .getById(props.context.pageContext.list.id.toString()).getUserEffectivePermissions(siteUser.LoginName);
+    const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
+
+    if (!teamHasPermissions) {
+      await await sp.web.lists
+        .getById(props.context.pageContext.list.id.toString())
+        .breakRoleInheritance(true, false);
+      await sp.web.lists
+        .getById(props.context.pageContext.list.id.toString())
+        .roleAssignments.add(siteUser.Id, roleDefinitionId);
+    }
+  }
+  async function grantTeamMembersAcessToFolder(teamId: string, roleDefinitionId: number) {
+    const sp = spfi().using(SPFx(props.context));
+    const siteUser = await ensureTeamsUser(sp, teamId);
+    const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
+    const folder = await sp.web.getFolderByServerRelativePath(folderServerRelativePath).getItem()
+    const teamPermissions = await folder.getUserEffectivePermissions(siteUser.LoginName);
+    const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
+
+    if (!teamHasPermissions) {
+      await folder.breakRoleInheritance(true, false);
+      await folder.roleAssignments.add(siteUser.Id, roleDefinitionId);
+    }
+  }
+  async function grantTeamMembersAcessToItem(teamId: string, roleDefinitionId: number) {
+    const sp = spfi().using(SPFx(props.context));
+    const siteUser = await ensureTeamsUser(sp, teamId);
+    const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
+    const selectedItem = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
+      .items.getById(item["Id"]);
+
+    const teamPermissions = await selectedItem.getUserEffectivePermissions(siteUser.LoginName);
+    const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
+
+    if (!teamHasPermissions) {
+      await selectedItem.breakRoleInheritance(true, false);
+      await selectedItem.roleAssignments.add(siteUser.Id, roleDefinitionId);
+    }
+  }
+
 
   async function getRoleDefs(sp) {
     // get the role definitions for the current web -- now full condtrol or designer
@@ -574,7 +580,7 @@ export default class ShareToTeamsDialog extends BaseDialog {
   public event: IListViewCommandSetExecuteEventParameters;
   public msGraphClient: MSGraphClient;
   public context: BaseComponentContext;
-  public settings:IShareToTeamsCommandSetProperties;
+  public settings: IShareToTeamsCommandSetProperties;
   public render(): void {
     ReactDOM.render(
       <ShareToTeamsContent
