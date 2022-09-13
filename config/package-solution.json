@@ -3,9 +3,9 @@
     "solution": {
         "name": "Share to Teams",
         "id": "98fc8351-80c6-4dd8-9593-aa1127531ef2",
-        "version": "16.0.0.0",
+        "version": "18.0.0.0",
         "includeClientSideAssets": true,
-
+        "iconPath": "images/teamsicon.png",
         "skipFeatureDeployment": true,
         "isDomainIsolated": false,
         "webApiPermissionRequests": [{

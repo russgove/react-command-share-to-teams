@@ -4,7 +4,7 @@
     "https": true,
     "serveConfigurations": {
         "default": {
-            "pageUrl": "https://russellwgove.sharepoint.com/sites/CR-EU-Manufacturing/Shared%20Documents/Forms/AllItems.aspx",
+            "pageUrl": "https://russellwgove.sharepoint.com/sites/classic/Shared%20Documents/",
             "customActions": {
                 "02b09893-193a-47bb-85e6-0280fbfd41dc": {
                     "location": "ClientSideExtension.ListViewCommandSet.CommandBar",
