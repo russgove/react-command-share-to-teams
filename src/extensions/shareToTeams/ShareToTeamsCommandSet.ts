@@ -4,7 +4,7 @@ import { Log } from "@microsoft/sp-core-library";
 import {
   ShareToTeamsContent,
   IShareToTeamsProps,
-} from "../../dialogs/ShareToTeams";
+} from "../../components/ShareToTeams";
 import {
   BaseListViewCommandSet,
   Command,
@@ -134,7 +134,6 @@ export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShar
     this.panelProps = {
       event: event,
       msGraphClient: this.msGraphClient,
-      title: "SS",
       settings: this.properties,
       context: this.context,
       onClose: this._dismissPanel.bind(this),
