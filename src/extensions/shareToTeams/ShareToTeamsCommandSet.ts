@@ -1,6 +1,10 @@
 import { override } from "@microsoft/decorators";
 import { Log } from "@microsoft/sp-core-library";
-import ShareToTeamsDialog from "../../dialogs/ShareToTeams";
+//import ShareToTeamsDialog from "../../dialogs/ShareToTeams";
+import {
+  ShareToTeamsContent,
+  IShareToTeamsProps,
+} from "../../dialogs/ShareToTeams";
 import {
   BaseListViewCommandSet,
   Command,
@@ -21,6 +25,10 @@ import { spfi, SPFx } from "@pnp/sp";
 import * as strings from "ShareToTeamsCommandSetStrings";
 import { graphfi } from "@pnp/graph";
 import { SPFx as SPFxgr } from "@pnp/graph";
+import * as ReactDOM from "react-dom";
+import * as React from "react";
+import { assign } from "lodash";
+import { BaseComponentContext } from "@microsoft/sp-component-base";
 
 /**
  * If your command set uses the ClientSideComponentProperties JSON input,
@@ -41,6 +49,9 @@ const LOG_SOURCE: string = "ShareToTeamsCommandSet";
 
 export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShareToTeamsCommandSetProperties> {
   private msGraphClient: MSGraphClient;
+  private panelPlaceHolder: HTMLDivElement = null;
+  private panelProps:IShareToTeamsProps;
+  
   @override
   public async onInit(): Promise<void> {
     await super.onInit();
@@ -49,6 +60,11 @@ export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShar
       .then((client: MSGraphClient): void => {
         this.msGraphClient = client;
       });
+    // Create the container for our React component
+    this.panelPlaceHolder = document.body.appendChild(
+      document.createElement("div")
+    );
+    return Promise.resolve();
   }
 
   @override
@@ -58,10 +74,10 @@ export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShar
     const shareToTeamsCommand: Command = this.tryGetCommand(
       "COMMAND_SHARE_TO_TEAMS"
     );
-    debugger;
+   
     if (shareToTeamsCommand) {
       if (event.selectedRows.length == 1) {
-        // 
+        //
         switch (event.selectedRows[0].getValueByName("FSObjType")) {
           //one row selected
           case "0":
@@ -90,14 +106,13 @@ export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShar
         } else {
           //no rows selected are they at the top or in a folder
           const urlParams = new URLSearchParams(window.location.search);
-          if (urlParams.get("id")){
+          if (urlParams.get("id")) {
             // in a folder
             shareToTeamsCommand.visible = this.properties.allowFolderSharing;
-          } else{
+          } else {
             // at root
             shareToTeamsCommand.visible = this.properties.allowListSharing;
           }
-         
         }
       }
     }
@@ -115,12 +130,35 @@ export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShar
   }
 
   private cmdShareToTeams(event: IListViewCommandSetExecuteEventParameters) {
-    const dialog: ShareToTeamsDialog = new ShareToTeamsDialog();
-    dialog.title = `CHECK STATUS`;
-    dialog.context = this.context;
-    dialog.settings = this.properties;
-    dialog.event = event;
-    dialog.msGraphClient = this.msGraphClient;
-    dialog.show();
+    debugger;
+    this.panelProps = {
+      event: event,
+      msGraphClient: this.msGraphClient,
+      title: "SS",
+      settings: this.properties,
+      context: this.context,
+      onClose: this._dismissPanel.bind(this),
+      isOpen:true
+    };
+    this._showPanel();
+  }
+  private _showPanel() {
+    debugger;
+    this._renderPanelComponent();
+  }
+
+  private _dismissPanel() {
+    debugger;
+    this.panelProps.isOpen=false;
+    this._renderPanelComponent();
+  }
+
+  private _renderPanelComponent() {
+    debugger;
+    const element: React.ReactElement<IShareToTeamsProps> = React.createElement(
+      ShareToTeamsContent,
+      this.panelProps
+    );
+    ReactDOM.render(element, this.panelPlaceHolder);
   }
 }

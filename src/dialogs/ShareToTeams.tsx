@@ -42,20 +42,24 @@ import { useEffect } from "react";
 import * as ReactDOM from "react-dom";
 import { ShareMethod, ShareType } from "../model/model";
 import { IList } from "@pnp/sp/lists";
+import { Panel, Spinner } from "office-ui-fabric-react";
 // import "@pnp/graph/onedrive";
-interface IShareToTeamsProps {
+export interface IShareToTeamsProps {
   title: string;
-  close: () => void;
+  onClose: () => void;
   msGraphClient: MSGraphClient;
   context: BaseComponentContext;
   event: IListViewCommandSetExecuteEventParameters;
   settings: IShareToTeamsCommandSetProperties;
+  isOpen:boolean
 }
-function ShareToTeamsContent(props: IShareToTeamsProps) {
+export function ShareToTeamsContent(props: IShareToTeamsProps) {
+
   const graph = graphfi().using(SPFxGR(props.context));
   const [shareType, setShareType] = React.useState<ShareType>(null);
-  const [shareMethod, setShareMethod] = React.useState<ShareMethod>(null);
+  const [shareMethod, setShareMethod] = React.useState<ShareMethod>(0);
   const [item, setItem] = React.useState<any>(null);
+  
   const [canManageTabs, setCanManageTabs] = React.useState<boolean>(false);
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
   const [selectedTeam, setSelectedTeam] = React.useState<ITag[]>([]);
@@ -73,11 +77,12 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
   const [chatMessageText, setChatMessageText] = React.useState<string>("");
 
   useEffect(() => {
+    debugger;
     // declare the data fetching function
     const fetchData = async () => {
       const sp = spfi().using(SPFx(props.context));
       const urlParams = new URLSearchParams(window.location.search);
-      //TODO: save view enhancements to state and reapply isAscending=true sortField=LinkFilenameFilterFields1=testcol1 FilterValues1=a%3B%23b FilterTypes1=Text       let locFolderServerRelativePath = urlParams.get("id")
+      //TODO: save view enhancements to state and reapply isAscending=true sortField=LinkFilename FilterFields1=testcol1 FilterValues1=a%3B%23b FilterTypes1=Text       let locFolderServerRelativePath = urlParams.get("id")
       let folderServerRelativePathFromUrl = urlParams.get("id")
       const viewIdFromUrl = urlParams.get("viewid");
       const locListId = props.context.pageContext.list.id.toString();
@@ -151,11 +156,14 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
       await getRoleDefs(sp);
       setIsLoading(false);
     }
-    // call the function
+  
+    setIsLoading(true);
+    setChatMessageText("");
     fetchData()
-      // make sure to catch any error
+      
+      .then(()=>{setIsLoading(false)})
       .catch(console.error);
-  }, []);
+  }, [props.event]);
   async function ensureTeamsUser(sp: SPFI, teamId: string): Promise<ISiteUserProps> {
 
     // const group = await graph.groups.getById(teamId)();
@@ -164,7 +172,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
   }
   async function shareToTeams() {
 
-    debugger;
+
     const teamId: string = selectedTeam[0].key as string;
     const channelId: string = selectedTeamChannels[0].key as string;
     const channel = await graph.teams.getById(teamId).channels.getById(channelId);
@@ -217,7 +225,7 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
       default:
         alert('Invalid Share Method')
     }
-    props.close();
+    props.onClose();
   }
   async function getTeamsTabConfig(): Promise<[TeamsTab, string]> {
     //teams app ids:(https://docs.microsoft.com/en-us/graph/teams-configuring-builtin-tabs)
@@ -253,21 +261,21 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
       case ShareType.Folder:
         // switch (props.settings.librarySharingMethod) {
         //   case "page":
-            let fview = find(allViews, (view) => view.Id === selectedViewId)
-            let folderContentUrl = `${document.location.origin}${fview.ServerRelativeUrl}?id=${folderServerRelativePath}`;
-            teamsTab.configuration = {
-              contentUrl: folderContentUrl,
-            }
-            return [teamsTab, 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88'];
-          //   break;
-          // case "native":
-          //   // OK, so this is not working. I would need to give the user api level access to the library. Not worth the effort!
-          //   teamsTab.configuration = {
-          //     contentUrl: `${document.location.origin}${library["RootFolder"]["ServerRelativeUrl"]}`,
-          //   }
-          //   return [teamsTab, 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/com.microsoft.teamspace.tab.files.sharepoint'];
-          //   break;
-        // }
+        let fview = find(allViews, (view) => view.Id === selectedViewId)
+        let folderContentUrl = `${document.location.origin}${fview.ServerRelativeUrl}?id=${folderServerRelativePath}`;
+        teamsTab.configuration = {
+          contentUrl: folderContentUrl,
+        }
+        return [teamsTab, 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88'];
+      //   break;
+      // case "native":
+      //   // OK, so this is not working. I would need to give the user api level access to the library. Not worth the effort!
+      //   teamsTab.configuration = {
+      //     contentUrl: `${document.location.origin}${library["RootFolder"]["ServerRelativeUrl"]}`,
+      //   }
+      //   return [teamsTab, 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/com.microsoft.teamspace.tab.files.sharepoint'];
+      //   break;
+      // }
       case ShareType.File:
         switch (props.settings.fileSharingMethod) {
           case "native":
@@ -294,28 +302,28 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
                 // maybe will work for text. works for doc and xls
                 appurl = 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88';
             }
-    
+
             return [teamsTab, appurl]
-    
-    case "page":
-    
-        const sp = spfi().using(SPFx(props.context));
-        const roledefinition = find(roleDefinitionInfos, x => x.Id === selectedRoleDefinitionId);
-        let fileContentUrl = "";
-        if (roledefinition.RoleTypeKind >= 3) { //0-none, 1-guest, 2-reader, 3-contribure, 4-designer, 5-administrator,6 editor https://docs.microsoft.com/en-us/previous-versions/office/sharepoint-csom/ee536725(v=office.15)
-          fileContentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-            .items.getById(item["Id"]).getWopiFrameUrl(1);//update mode in word
+
+          case "page":
+
+            const sp = spfi().using(SPFx(props.context));
+            const roledefinition = find(roleDefinitionInfos, x => x.Id === selectedRoleDefinitionId);
+            let fileContentUrl = "";
+            if (roledefinition.RoleTypeKind >= 3) { //0-none, 1-guest, 2-reader, 3-contribure, 4-designer, 5-administrator,6 editor https://docs.microsoft.com/en-us/previous-versions/office/sharepoint-csom/ee536725(v=office.15)
+              fileContentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
+                .items.getById(item["Id"]).getWopiFrameUrl(1);//update mode in word
+            }
+            else {
+              fileContentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
+                .items.getById(item["Id"]).getWopiFrameUrl(0);//read only in word
+            }
+            teamsTab.configuration = {
+              contentUrl: fileContentUrl,
+            }
+            return [teamsTab, 'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88'];
         }
-        else {
-          fileContentUrl = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-            .items.getById(item["Id"]).getWopiFrameUrl(0);//read only in word
-        }
-        teamsTab.configuration = {
-          contentUrl: fileContentUrl,
-        }
-        return [teamsTab,'https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/2a527703-1f6f-4559-a332-d8a7d288cd88'];
-          }
-        
+
 
     }
 
@@ -442,12 +450,24 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
         }
       });
   }
+ if (isLoading){
+  return(
+    <Panel
+      isOpen={props.isOpen}
+      onDismiss={props.onClose}
+      headerText={title}
+
+    ><Spinner  label="Loading..."></Spinner></Panel>
+   
+  )
+ }
 
   return (
-    <DialogContent
-      title={title}
-      onDismiss={props.close}
-      showCloseButton={true}
+    <Panel
+      isOpen={props.isOpen}
+      onDismiss={props.onClose}
+      headerText={title}
+
     >
       <div>
         {!userCanManagePermissions && !isLoading &&
@@ -455,15 +475,16 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
             You do not have permission to share this. Please contact a site owner to share.
           </MessageBar>
         }
-        {/* ShareType is {ShareType[shareType]}<br />
-        ShareType is {ShareMethod[shareMethod]}<br />
+        {title}<br />
+        ShareType is {ShareType[shareType]}<br />
+        shareMethod is {ShareMethod[shareMethod]} ({shareMethod})<br />
         Library  is {libraryName}<br />
         folderServerRelativePath is {folderServerRelativePath}<br />
         ViewId is {selectedViewId}<br />
         userCanManagePermissions is {userCanManagePermissions ? "true" : "false"}<br />
         selectedRoleDefinitionId is {selectedRoleDefinitionId}<br />
         selectedTems.lens {selectedTeam.length}<br />
-        canManageTabs is {canManageTabs ? "true" : "false"}<br /> */}
+        canManageTabs is {canManageTabs ? "true" : "false"}<br />
         <TeamPicker label={`What Team would you like to share this ${ShareType[shareType]} to?`}
           selectedTeams={selectedTeam}
           appcontext={props.context}
@@ -522,15 +543,15 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
           onSelectedChannels={(tagList: ITag[]) => {
             setSelectedTeamChannels(tagList);
           }} />
-        <ChoiceGroup // so this just occurred to me!!!!!!
+        <ChoiceGroup 
 
-          label="How wouold you like to share this?"
+          label="How would you like to share this?"
           title="View"
           options={[
             { key: "0", text: "In a tab(good forever)", },
             { key: "1", text: "In a chat(with an exparation", } // could us a sharing link to share this in a chat maybe???
           ]}
-          defaultSelectedKey={shareMethod}
+          selectedKey={shareMethod.toString()}
           onChange={(e, o) => {
 
             setShareMethod(parseInt(o.key))
@@ -543,7 +564,6 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
             label="Which view would you like to show in the Teams Tab?"
             title="View"
             options={allViews.map(view => { return { key: view.Id, text: view.Title } })}
-            defaultSelectedKey={selectedViewId}
             selectedKey={selectedViewId}
             onChange={(e, o) => { setSelectedViewId(o.key) }}
           />
@@ -554,7 +574,6 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
           options={roleDefinitionInfos.map((rd) => {
             return { key: rd.Id.toString(), text: `${rd.Name} (${rd.Description})` };
           })}
-          defaultSelectedKey={selectedRoleDefinitionId}
           selectedKey={selectedRoleDefinitionId ? selectedRoleDefinitionId.toString() : null}
           onChange={(e, o) => {
 
@@ -580,44 +599,44 @@ function ShareToTeamsContent(props: IShareToTeamsProps) {
 
 
 
-    </DialogContent>
+    </Panel>
   );
 
 }
 
-export default class ShareToTeamsDialog extends BaseDialog {
+// export default class ShareToTeamsDialog extends BaseDialog {
 
-  public title: string;
-  public event: IListViewCommandSetExecuteEventParameters;
-  public msGraphClient: MSGraphClient;
-  public context: BaseComponentContext;
-  public settings: IShareToTeamsCommandSetProperties;
-  public render(): void {
-    ReactDOM.render(
-      <ShareToTeamsContent
-        event={this.event}
-        msGraphClient={this.msGraphClient}
-        title="SS"
-        settings={this.settings}
-        context={this.context}
-        close={this.close}
-      />,
-      this.domElement
-    );
-  }
+//   public title: string;
+//   public event: IListViewCommandSetExecuteEventParameters;
+//   public msGraphClient: MSGraphClient;
+//   public context: BaseComponentContext;
+//   public settings: IShareToTeamsCommandSetProperties;
+//   public render(): void {
+//     ReactDOM.render(
+//       <ShareToTeamsContent
+//         event={this.event}
+//         msGraphClient={this.msGraphClient}
+//         title="SS"
+//         settings={this.settings}
+//         context={this.context}
+//         onClose={this.close}
+//       />,
+//       this.domElement
+//     );
+//   }
 
-  public getConfig(): IDialogConfiguration {
-    return {
-      isBlocking: true,
-    };
-  }
+//   public getConfig(): IDialogConfiguration {
+//     return {
+//       isBlocking: true,
+//     };
+//   }
 
-  protected onAfterClose(): void {
-    super.onAfterClose();
-    // Clean up the element for the next dialog
-    ReactDOM.unmountComponentAtNode(this.domElement);
-  }
-}
+//   protected onAfterClose(): void {
+//     super.onAfterClose();
+//     // Clean up the element for the next dialog
+//     ReactDOM.unmountComponentAtNode(this.domElement);
+//   }
+// }
 
 
 
