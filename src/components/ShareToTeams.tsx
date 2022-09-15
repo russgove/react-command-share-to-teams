@@ -1,30 +1,27 @@
-import { ChatMessage, Drive, DriveItem, RoleDefinition, TeamsTab } from "@microsoft/microsoft-graph-types";
+import { ChatMessage, Drive, DriveItem, TeamsTab } from "@microsoft/microsoft-graph-types";
 import { BaseComponentContext } from "@microsoft/sp-component-base";
-import { BaseDialog, IDialogConfiguration } from "@microsoft/sp-dialog";
 import { MSGraphClient } from "@microsoft/sp-http";
-import { IShareToTeamsCommandSetProperties } from "../extensions/shareToTeams/ShareToTeamsCommandSet";
 import { IListViewCommandSetExecuteEventParameters } from "@microsoft/sp-listview-extensibility";
 import { graphfi, SPFx as SPFxGR } from "@pnp/graph";
 import "@pnp/graph/";
 import "@pnp/graph/groups";
-import { Site } from "@pnp/graph/sites";
+import "@pnp/graph/onedrive";
 import "@pnp/graph/sites";
+import { Site } from "@pnp/graph/sites";
 import "@pnp/graph/sites/types";
 import "@pnp/graph/teams";
 import "@pnp/graph/users";
-import "@pnp/graph/onedrive"
-
 import { SPFI, spfi, SPFx } from "@pnp/sp";
 import "@pnp/sp/folders";
 import "@pnp/sp/items";
 import { IItem } from "@pnp/sp/items";
 import "@pnp/sp/lists";
+import { IList } from "@pnp/sp/lists";
 import "@pnp/sp/security";
 import { IBasePermissions, IRoleDefinitionInfo, PermissionKind } from "@pnp/sp/security";
 import "@pnp/sp/security/web";
 import { ISiteUserProps } from "@pnp/sp/site-users/types";
 import "@pnp/sp/site-users/web";
-//import "@pnp/sp/sites";
 import "@pnp/sp/views";
 import { IViewInfo } from "@pnp/sp/views";
 import "@pnp/sp/webs";
@@ -33,19 +30,17 @@ import { TeamPicker } from "@pnp/spfx-controls-react/lib/TeamPicker";
 import { filter, find } from "lodash";
 import { PrimaryButton } from "office-ui-fabric-react/lib/Button";
 import { ChoiceGroup } from "office-ui-fabric-react/lib/ChoiceGroup";
-import { DialogContent } from "office-ui-fabric-react/lib/Dialog";
+import { Label } from "office-ui-fabric-react/lib/Label";
+import { List as FList } from "office-ui-fabric-react/lib/List";
 import { MessageBar, MessageBarType } from 'office-ui-fabric-react/lib/MessageBar';
+import { Panel } from "office-ui-fabric-react/lib/Panel";
 import { ITag } from "office-ui-fabric-react/lib/Pickers";
+import { Spinner } from "office-ui-fabric-react/lib/Spinner";
 import { TextField } from "office-ui-fabric-react/lib/TextField";
 import * as React from "react";
 import { useEffect } from "react";
-import * as ReactDOM from "react-dom";
+import { IShareToTeamsCommandSetProperties } from "../extensions/shareToTeams/ShareToTeamsCommandSet";
 import { ShareMethod, ShareType } from "../model/model";
-import { IList, List } from "@pnp/sp/lists";
-import { List as FList } from "office-ui-fabric-react/lib/List";
-import { Panel } from "office-ui-fabric-react/lib/Panel";
-import { Spinner } from "office-ui-fabric-react/lib/Spinner";
-import { Label } from "office-ui-fabric-react/lib/Label";
 
 
 // import "@pnp/graph/onedrive";
@@ -530,7 +525,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
       >
       <div>
         {cantShareMessage}
-        {title}<br />
+        {/* {title}<br />
         Teams Permission Hi is {teamPermissions ? teamPermissions.High : ""} low is{teamPermissions ? teamPermissions.Low : ""}<br />
         ShareType is {ShareType[shareType]}<br />
         shareMethod is {ShareMethod[shareMethod]} ({shareMethod})<br />
@@ -540,7 +535,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
         userCanManagePermissions is {userCanManagePermissions ? "true" : "false"}<br />
         selectedRoleDefinitionId is {selectedRoleDefinitionId}<br />
         selectedTems.lens {selectedTeam.length}<br />
-        canManageTabs is {canManageTabs ? "true" : "false"}<br />
+        canManageTabs is {canManageTabs ? "true" : "false"}<br /> */}
         <TeamPicker label={`What Team would you like to share this ${ShareType[shareType]} to?`}
           selectedTeams={selectedTeam}
           appcontext={props.context}
