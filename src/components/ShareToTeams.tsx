@@ -391,11 +391,9 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
 
     const teamPermissions = await sp.web.lists
       .getById(props.context.pageContext.list.id.toString()).getUserEffectivePermissions(siteUser.LoginName);
-    const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
-    // see : https://www.w3schools.com/js/js_bitwise.asp
-    // and  : https://www.darraghoriordan.com/2019/07/29/bitwise-mask-typescript/
-
-
+    const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);// does not work. View-only  Permission 
+    console.log(teamHasPermissions); 
+ 
    const hasem=hasPermissions(teamPermissions,roledefinition.BasePermissions)
    
     console.log(teamPermissions);
