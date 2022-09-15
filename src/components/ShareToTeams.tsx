@@ -20,7 +20,7 @@ import "@pnp/sp/items";
 import { IItem } from "@pnp/sp/items";
 import "@pnp/sp/lists";
 import "@pnp/sp/security";
-import { IRoleDefinitionInfo, PermissionKind } from "@pnp/sp/security";
+import { IBasePermissions, IRoleDefinitionInfo, PermissionKind } from "@pnp/sp/security";
 import "@pnp/sp/security/web";
 import { ISiteUserProps } from "@pnp/sp/site-users/types";
 import "@pnp/sp/site-users/web";
@@ -42,7 +42,7 @@ import { useEffect } from "react";
 import * as ReactDOM from "react-dom";
 import { ShareMethod, ShareType } from "../model/model";
 import { IList } from "@pnp/sp/lists";
-import { Panel, Spinner } from "office-ui-fabric-react";
+import { Panel, Spinner, TeachingBubble } from "office-ui-fabric-react";
 // import "@pnp/graph/onedrive";
 export interface IShareToTeamsProps {
 
@@ -77,7 +77,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
   const [chatMessageText, setChatMessageText] = React.useState<string>("");
 
   useEffect(() => {
-    debugger;
+   
     // declare the data fetching function
     const fetchData = async () => {
       const sp = spfi().using(SPFx(props.context));
@@ -168,6 +168,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
 
     // const group = await graph.groups.getById(teamId)();
     const user = await sp.web.ensureUser(`c:0o.c|federateddirectoryclaimprovider|${teamId}`);
+    console.dir(user);
     return user.data;
   }
   async function shareToTeams() {
@@ -279,7 +280,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
       case ShareType.File:
         switch (props.settings.fileSharingMethod) {
           case "native":
-            debugger;
+      
             teamsTab.configuration = {
               contentUrl: `${document.location.origin}${item["File"]["ServerRelativeUrl"]}`,
               entityId: null // dont believe the docs
@@ -367,8 +368,23 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
     }
     return chatMessage;
   }
+  function hasPermissions(existingPermissions:any,requiredPermissions:any){ // hig and low are strings , not numbers!
+     // see : https://www.w3schools.com/js/js_bitwise.asp
+    // and  : https://www.darraghoriordan.com/2019/07/29/bitwise-mask-typescript/
+    const eHi=parseInt(existingPermissions["High"],10);
+    const eLo=parseInt(existingPermissions["Low"],10);
+    const rHi=parseInt(requiredPermissions["High"],10);
+    const rLo=parseInt(requiredPermissions["Low"],10);
+    
+    const hasPerms=
+      (rHi & eHi ) === rHi
+      && 
+      (rLo & eLo)===rLo;
 
+      return hasPerms;
+  }
   async function grantTeamMembersAcessToLibrary(teamId: string, roleDefinitionId: number) {
+    debugger;
     const sp = spfi().using(SPFx(props.context));
     const siteUser = await ensureTeamsUser(sp, teamId);
     const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
@@ -376,8 +392,17 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
     const teamPermissions = await sp.web.lists
       .getById(props.context.pageContext.list.id.toString()).getUserEffectivePermissions(siteUser.LoginName);
     const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
+    // see : https://www.w3schools.com/js/js_bitwise.asp
+    // and  : https://www.darraghoriordan.com/2019/07/29/bitwise-mask-typescript/
 
-    if (!teamHasPermissions) {
+
+   const hasem=hasPermissions(teamPermissions,roledefinition.BasePermissions)
+   
+    console.log(teamPermissions);
+    console.log(roledefinition.BasePermissions);
+    
+    debugger;
+    if (!hasem) {
       await await sp.web.lists
         .getById(props.context.pageContext.list.id.toString())
         .breakRoleInheritance(true, false);
@@ -593,7 +618,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
             <br />
           </div>
         }
-        <PrimaryButton disabled={!canManageTabs || selectedTeam.length == 0 || selectedTeamChannels.length == 0 || tabName.length == 0} onClick={shareToTeams}> Add Tab to Team</PrimaryButton>
+        <PrimaryButton disabled={!canManageTabs || selectedRoleDefinitionId === null || selectedTeam.length == 0 || selectedTeamChannels.length == 0 || tabName.length == 0} onClick={shareToTeams}> Add Tab to Team</PrimaryButton>
       </div>
 
 

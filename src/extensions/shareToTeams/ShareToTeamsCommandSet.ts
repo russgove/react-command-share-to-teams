@@ -130,7 +130,7 @@ export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShar
   }
 
   private cmdShareToTeams(event: IListViewCommandSetExecuteEventParameters) {
-    debugger;
+
     this.panelProps = {
       event: event,
       msGraphClient: this.msGraphClient,
@@ -142,18 +142,18 @@ export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShar
     this._showPanel();
   }
   private _showPanel() {
-    debugger;
+    
     this._renderPanelComponent();
   }
 
   private _dismissPanel() {
-    debugger;
+ 
     this.panelProps.isOpen=false;
     this._renderPanelComponent();
   }
 
   private _renderPanelComponent() {
-    debugger;
+   
     const element: React.ReactElement<IShareToTeamsProps> = React.createElement(
       ShareToTeamsContent,
       this.panelProps
