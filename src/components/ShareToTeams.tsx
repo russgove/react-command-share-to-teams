@@ -54,7 +54,7 @@ export interface IShareToTeamsProps {
   isOpen:boolean
 }
 export function ShareToTeamsContent(props: IShareToTeamsProps) {
-
+  const sp = spfi().using(SPFx(props.context));
   const graph = graphfi().using(SPFxGR(props.context));
   const [shareType, setShareType] = React.useState<ShareType>(null);
   const [shareMethod, setShareMethod] = React.useState<ShareMethod>(0);
@@ -80,7 +80,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
    
     // declare the data fetching function
     const fetchData = async () => {
-      const sp = spfi().using(SPFx(props.context));
+      //const sp = spfi().using(SPFx(props.context));
       const urlParams = new URLSearchParams(window.location.search);
       //TODO: save view enhancements to state and reapply isAscending=true sortField=LinkFilename FilterFields1=testcol1 FilterValues1=a%3B%23b FilterTypes1=Text       let locFolderServerRelativePath = urlParams.get("id")
       let folderServerRelativePathFromUrl = urlParams.get("id")
@@ -312,7 +312,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
 
           case "page":
 
-            const sp = spfi().using(SPFx(props.context));
+           // const sp = spfi().using(SPFx(props.context));
             const roledefinition = find(roleDefinitionInfos, x => x.Id === selectedRoleDefinitionId);
             let fileContentUrl = "";
             if (roledefinition.RoleTypeKind >= 3) { //0-none, 1-guest, 2-reader, 3-contribure, 4-designer, 5-administrator,6 editor https://docs.microsoft.com/en-us/previous-versions/office/sharepoint-csom/ee536725(v=office.15)
@@ -389,7 +389,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
   }
   async function grantTeamMembersAcessToLibrary(teamId: string, roleDefinitionId: number) {
     debugger;
-    const sp = spfi().using(SPFx(props.context));
+    //const sp = spfi().using(SPFx(props.context));
     const siteUser = await ensureTeamsUser(sp, teamId);
     const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
 
@@ -414,7 +414,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
     }
   }
   async function grantTeamMembersAcessToFolder(teamId: string, roleDefinitionId: number) {
-    const sp = spfi().using(SPFx(props.context));
+    //const sp = spfi().using(SPFx(props.context));
     const siteUser = await ensureTeamsUser(sp, teamId);
     const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
     const folder = await sp.web.getFolderByServerRelativePath(folderServerRelativePath).getItem()
@@ -427,7 +427,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
     }
   }
   async function grantTeamMembersAcessToItem(teamId: string, roleDefinitionId: number) {
-    const sp = spfi().using(SPFx(props.context));
+   // const sp = spfi().using(SPFx(props.context));
     const siteUser = await ensureTeamsUser(sp, teamId);
     const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
     const selectedItem = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
