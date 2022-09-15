@@ -167,10 +167,14 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
   async function ensureTeamsUser(sp: SPFI, teamId: string): Promise<ISiteUserProps> {
 
     // const group = await graph.groups.getById(teamId)();
-    const user = await sp.web.ensureUser(`c:0o.c|federateddirectoryclaimprovider|${teamId}`);
+    const user = await sp.web.ensureUser(getTeamLoginName(teamId));
     console.dir(user);
     return user.data;
   }
+  function getTeamLoginName(teamId: string): string {
+    return `c:0o.c|federateddirectoryclaimprovider|${teamId}`;
+  }
+
   async function shareToTeams() {
 
 
@@ -391,8 +395,8 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
 
     const teamPermissions = await sp.web.lists
       .getById(props.context.pageContext.list.id.toString()).getUserEffectivePermissions(siteUser.LoginName);
-    const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);// does not work. View-only  Permission 
-    console.log(teamHasPermissions); 
+    //const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);// does not work. View-only  Permission 
+  //  console.log(teamHasPermissions); 
  
    const hasem=hasPermissions(teamPermissions,roledefinition.BasePermissions)
    
@@ -514,18 +518,20 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
           itemLimit={1}
 
           onSelectedTeams={(tagList: ITag[]) => {
-            setSelectedTeamChannels([]);
+            debugger;
+            setSelectedTeam(tagList);
+            setSelectedTeamChannels([]); // deselec any channel;s from old team
+            setCanManageTabs(true); // avoid flahing message that appears until we figure out id he has permissions
             graph.teams.getById(tagList[0].key.toString())()
               .then(team => {
 
                 if (team.memberSettings.allowCreateUpdateRemoveTabs) {
-                  setSelectedTeam(tagList);
+                  //setSelectedTeam(tagList);
                   setCanManageTabs(true);
                 }
                 else {
                   graph.groups.getById(tagList[0].key.toString()).expand("owners").select("owners")()
                     .then(group => {
-
                       // if user is owner of the group, then they can manage tabs
                       for (const owner of group.owners) {
                         if (owner["userPrincipalName"].toLowerCase() === props.context.pageContext.user.loginName.toLowerCase()) {
@@ -533,12 +539,12 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
                           return;
                         }
                       }
-                      setSelectedTeam(tagList);
+                     // setSelectedTeam(tagList);
                       setCanManageTabs(false);
                     })
                     .catch(err => { // if you cant get the owners, you ain't an owner
                       debugger
-                      setSelectedTeam(tagList);
+                      //setSelectedTeam(tagList);
                       setCanManageTabs(false);
 
                     });
@@ -552,7 +558,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
           }}
         />
         {!canManageTabs && selectedTeam.length > 0 &&
-          <MessageBar messageBarType={MessageBarType.error}>
+          <MessageBar messageBarType={MessageBarType.error} >
             You do not have permission to create tabs in this team.
           </MessageBar>
         }
