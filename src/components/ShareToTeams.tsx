@@ -647,6 +647,11 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
             />
           </div>
         }
+         {teamPermissions === null &&
+    
+            <Label>This Team currently has no permissions on this  {ShareType[shareType]}</Label>
+          
+        }
 
         <ChoiceGroup
           label={`What ${teamPermissions ? "additional" : ""} permission would you like give to the members of the ${selectedTeam.length == 0 ? "" : selectedTeam[0].name} team to this ${ShareType[shareType]} ?`}
