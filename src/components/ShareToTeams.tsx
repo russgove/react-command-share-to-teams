@@ -1,4 +1,4 @@
-import { ChatMessage, Drive, DriveItem, TeamsTab } from "@microsoft/microsoft-graph-types";
+import { ChatMessage, Drive, DriveItem, RoleDefinition, TeamsTab } from "@microsoft/microsoft-graph-types";
 import { BaseComponentContext } from "@microsoft/sp-component-base";
 import { BaseDialog, IDialogConfiguration } from "@microsoft/sp-dialog";
 import { MSGraphClient } from "@microsoft/sp-http";
@@ -30,7 +30,7 @@ import { IViewInfo } from "@pnp/sp/views";
 import "@pnp/sp/webs";
 import { TeamChannelPicker } from "@pnp/spfx-controls-react/lib/TeamChannelPicker";
 import { TeamPicker } from "@pnp/spfx-controls-react/lib/TeamPicker";
-import { find } from "lodash";
+import { filter, find } from "lodash";
 import { PrimaryButton } from "office-ui-fabric-react/lib/Button";
 import { ChoiceGroup } from "office-ui-fabric-react/lib/ChoiceGroup";
 import { DialogContent } from "office-ui-fabric-react/lib/Dialog";
@@ -41,8 +41,13 @@ import * as React from "react";
 import { useEffect } from "react";
 import * as ReactDOM from "react-dom";
 import { ShareMethod, ShareType } from "../model/model";
-import { IList } from "@pnp/sp/lists";
-import { Panel, Spinner, TeachingBubble } from "office-ui-fabric-react";
+import { IList, List } from "@pnp/sp/lists";
+import { List as FList } from "office-ui-fabric-react/lib/List";
+import { Panel } from "office-ui-fabric-react/lib/Panel";
+import { Spinner } from "office-ui-fabric-react/lib/Spinner";
+import { Label } from "office-ui-fabric-react/lib/Label";
+
+
 // import "@pnp/graph/onedrive";
 export interface IShareToTeamsProps {
 
@@ -51,7 +56,7 @@ export interface IShareToTeamsProps {
   context: BaseComponentContext;
   event: IListViewCommandSetExecuteEventParameters;
   settings: IShareToTeamsCommandSetProperties;
-  isOpen:boolean
+  isOpen: boolean
 }
 export function ShareToTeamsContent(props: IShareToTeamsProps) {
   const sp = spfi().using(SPFx(props.context));
@@ -59,7 +64,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
   const [shareType, setShareType] = React.useState<ShareType>(null);
   const [shareMethod, setShareMethod] = React.useState<ShareMethod>(0);
   const [item, setItem] = React.useState<any>(null);
-  
+
   const [canManageTabs, setCanManageTabs] = React.useState<boolean>(false);
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
   const [selectedTeam, setSelectedTeam] = React.useState<ITag[]>([]);
@@ -75,9 +80,10 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
   const [libraryName, setLibraryName] = React.useState<string>("");
   const [library, setLibrary] = React.useState<IList>(null);
   const [chatMessageText, setChatMessageText] = React.useState<string>("");
+  const [teamPermissions, setTeamPermissions] = React.useState<IBasePermissions>(null);
 
   useEffect(() => {
-   
+
     // declare the data fetching function
     const fetchData = async () => {
       //const sp = spfi().using(SPFx(props.context));
@@ -156,12 +162,12 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
       await getRoleDefs(sp);
       setIsLoading(false);
     }
-  
+
     setIsLoading(true);
     setChatMessageText("");
     fetchData()
-      
-      .then(()=>{setIsLoading(false)})
+
+      .then(() => { setIsLoading(false) })
       .catch(console.error);
   }, [props.event]);
   async function ensureTeamsUser(sp: SPFI, teamId: string): Promise<ISiteUserProps> {
@@ -284,7 +290,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
       case ShareType.File:
         switch (props.settings.fileSharingMethod) {
           case "native":
-      
+
             teamsTab.configuration = {
               contentUrl: `${document.location.origin}${item["File"]["ServerRelativeUrl"]}`,
               entityId: null // dont believe the docs
@@ -312,7 +318,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
 
           case "page":
 
-           // const sp = spfi().using(SPFx(props.context));
+            // const sp = spfi().using(SPFx(props.context));
             const roledefinition = find(roleDefinitionInfos, x => x.Id === selectedRoleDefinitionId);
             let fileContentUrl = "";
             if (roledefinition.RoleTypeKind >= 3) { //0-none, 1-guest, 2-reader, 3-contribure, 4-designer, 5-administrator,6 editor https://docs.microsoft.com/en-us/previous-versions/office/sharepoint-csom/ee536725(v=office.15)
@@ -337,10 +343,10 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
     let chatMessage: ChatMessage = {}
     switch (shareType) {
       case ShareType.Library:
-        alert("cannot share libraryu in cjat")
+        alert("cannot share library in chat")
         break;
       case ShareType.Folder:
-        alert("cannot share  folder in cjat")
+        alert("cannot share  folder in chat")
         break;
       case ShareType.File:
         const site = graph.sites.getById(props.context.pageContext.site.id.toString());
@@ -372,20 +378,20 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
     }
     return chatMessage;
   }
-  function hasPermissions(existingPermissions:any,requiredPermissions:any){ // hig and low are strings , not numbers!
-     // see : https://www.w3schools.com/js/js_bitwise.asp
+  function hasPermissions(existingPermissions: any, requiredPermissions: any) { // hig and low are strings , not numbers!
+    // see : https://www.w3schools.com/js/js_bitwise.asp
     // and  : https://www.darraghoriordan.com/2019/07/29/bitwise-mask-typescript/
-    const eHi=parseInt(existingPermissions["High"],10);
-    const eLo=parseInt(existingPermissions["Low"],10);
-    const rHi=parseInt(requiredPermissions["High"],10);
-    const rLo=parseInt(requiredPermissions["Low"],10);
-    
-    const hasPerms=
-      (rHi & eHi ) === rHi
-      && 
-      (rLo & eLo)===rLo;
+    const eHi = parseInt(existingPermissions["High"], 10);
+    const eLo = parseInt(existingPermissions["Low"], 10);
+    const rHi = parseInt(requiredPermissions["High"], 10);
+    const rLo = parseInt(requiredPermissions["Low"], 10);
 
-      return hasPerms;
+    const hasPerms =
+      (rHi & eHi) === rHi
+      &&
+      (rLo & eLo) === rLo;
+
+    return hasPerms;
   }
   async function grantTeamMembersAcessToLibrary(teamId: string, roleDefinitionId: number) {
     debugger;
@@ -396,13 +402,13 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
     const teamPermissions = await sp.web.lists
       .getById(props.context.pageContext.list.id.toString()).getUserEffectivePermissions(siteUser.LoginName);
     //const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);// does not work. View-only  Permission 
-  //  console.log(teamHasPermissions); 
- 
-   const hasem=hasPermissions(teamPermissions,roledefinition.BasePermissions)
-   
+    //  console.log(teamHasPermissions); 
+
+    const hasem = hasPermissions(teamPermissions, roledefinition.BasePermissions)
+
     console.log(teamPermissions);
     console.log(roledefinition.BasePermissions);
-    
+
     debugger;
     if (!hasem) {
       await await sp.web.lists
@@ -427,7 +433,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
     }
   }
   async function grantTeamMembersAcessToItem(teamId: string, roleDefinitionId: number) {
-   // const sp = spfi().using(SPFx(props.context));
+    // const sp = spfi().using(SPFx(props.context));
     const siteUser = await ensureTeamsUser(sp, teamId);
     const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
     const selectedItem = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
@@ -477,17 +483,17 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
         }
       });
   }
- if (isLoading){
-  return(
-    <Panel
-      isOpen={props.isOpen}
-      onDismiss={props.onClose}
-      headerText={title}
+  if (isLoading) {
+    return (
+      <Panel
+        isOpen={props.isOpen}
+        onDismiss={props.onClose}
+        headerText={title}
 
-    ><Spinner  label="Loading..."></Spinner></Panel>
-   
-  )
- }
+      ><Spinner label="Loading..."></Spinner></Panel>
+
+    )
+  }
 
   return (
     <Panel
@@ -503,6 +509,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
           </MessageBar>
         }
         {title}<br />
+        Teams Permission Hi is {teamPermissions ? teamPermissions.High : ""} low is{teamPermissions ? teamPermissions.Low : ""}<br />
         ShareType is {ShareType[shareType]}<br />
         shareMethod is {ShareMethod[shareMethod]} ({shareMethod})<br />
         Library  is {libraryName}<br />
@@ -517,9 +524,10 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
           appcontext={props.context}
           itemLimit={1}
 
-          onSelectedTeams={(tagList: ITag[]) => {
+          onSelectedTeams={async (tagList: ITag[]) => {
             debugger;
             setSelectedTeam(tagList);
+            setTeamPermissions(null);
             setSelectedTeamChannels([]); // deselec any channel;s from old team
             setCanManageTabs(true); // avoid flahing message that appears until we figure out id he has permissions
             graph.teams.getById(tagList[0].key.toString())()
@@ -539,7 +547,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
                           return;
                         }
                       }
-                     // setSelectedTeam(tagList);
+                      // setSelectedTeam(tagList);
                       setCanManageTabs(false);
                     })
                     .catch(err => { // if you cant get the owners, you ain't an owner
@@ -554,8 +562,28 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
               .catch(err => {
                 console.log(err);
               });
+            debugger;
+            // get the teams permissions
+            const teamsLoginName = getTeamLoginName(tagList[0].key as string);
+            switch (shareType) {
+              case ShareType.Library:
+                setTeamPermissions(await sp.web.lists
+                  .getById(props.context.pageContext.list.id.toString()).getUserEffectivePermissions(teamsLoginName));
 
+              case ShareType.File:
+                const selectedItem = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
+                  .items.getById(item["Id"]);
+                setTeamPermissions(await selectedItem.getUserEffectivePermissions(teamsLoginName))
+
+              case ShareType.Folder:
+                const folder = await sp.web.getFolderByServerRelativePath(folderServerRelativePath).getItem()
+                setTeamPermissions(await folder.getUserEffectivePermissions(teamsLoginName));
+
+              default:
+                setTeamPermissions(null)
+            }
           }}
+
         />
         {!canManageTabs && selectedTeam.length > 0 &&
           <MessageBar messageBarType={MessageBarType.error} >
@@ -571,8 +599,8 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
           itemLimit={1}
           onSelectedChannels={(tagList: ITag[]) => {
             setSelectedTeamChannels(tagList);
-          }}  />
-        <ChoiceGroup 
+          }} />
+        <ChoiceGroup
 
           label="How would you like to share this?"
           title="View"
@@ -597,15 +625,37 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
             onChange={(e, o) => { setSelectedViewId(o.key) }}
           />
         }
+        {!canManageTabs && selectedTeam.length > 0 &&
+          <MessageBar messageBarType={MessageBarType.error} >
+            You do not have permission to create tabs in this team.
+          </MessageBar>
+        }
+        {teamPermissions !== null &&
+          <div>
+            <Label>This Team currently has these permissions on this  {ShareType[shareType]}</Label>
+            <FList
+              items={filter(roleDefinitionInfos, rd => hasPermissions(teamPermissions, rd.BasePermissions))}
+              onRenderCell={(item?, index?: number, isScrolling?: boolean) => {
+                debugger;
+                return (
+                  <div>
+                    {item.Description}
+                  </div>
+                )
+              }}
+
+            />
+          </div>
+        }
+
         <ChoiceGroup
-          label={`What permission like give to the members of the ${selectedTeam.length == 0 ? "" : selectedTeam[0].name} team to this ${ShareType[shareType]} ?`}
+          label={`What ${teamPermissions ? "additional" : ""} permission would you like give to the members of the ${selectedTeam.length == 0 ? "" : selectedTeam[0].name} team to this ${ShareType[shareType]} ?`}
           title="View"
           options={roleDefinitionInfos.map((rd) => {
             return { key: rd.Id.toString(), text: `${rd.Name} (${rd.Description})` };
           })}
           selectedKey={selectedRoleDefinitionId ? selectedRoleDefinitionId.toString() : null}
           onChange={(e, o) => {
-
             setSelectedRoleDefinitionId(parseInt(o.key))
           }}
         />
