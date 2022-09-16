@@ -107,6 +107,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
           // its a folder
 
           setShareType(ShareType.Folder);
+          setShareMethod(ShareMethod.ChannelTab);// cant share a  folder in a chat
           setFolderServerRelativePath(locItem["Folder"]["ServerRelativeUrl"]);
 
           setTabName(props.context.pageContext.list.title);// see if user has permissions to share this folder
@@ -126,6 +127,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
           setFolderServerRelativePath(folderServerRelativePathFromUrl);
 
           setShareType(ShareType.Folder);
+          setShareMethod(ShareMethod.ChannelTab);// cant share a  folder in a chat
           await sp.web.getFolderByServerRelativePath(folderServerRelativePathFromUrl)
             .expand("ListItemAllFields/EffectiveBasePermissions")()
             .then(folder => {
@@ -135,6 +137,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
         } else {
           // they are at the root of the list
           setShareType(ShareType.Library)
+          setShareMethod(ShareMethod.ChannelTab);// cant share a  library in a chat
 
           await sp.web.lists.getById(locListId).select("Title", "EffectiveBasePermissions")()
             .then(list => {
@@ -337,7 +340,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
     switch (shareType) {
       case ShareType.Library:
         //alert("cannot share library in chat")
-        const attachId1="1";
+        const attachId1 = "1";
         chatMessage = {
           "body": {
             "contentType": "html",
@@ -531,7 +534,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
       isOpen={props.isOpen}
       onDismiss={props.onClose}
       headerText={title}
-      >
+    >
       <div>
         {cantShareMessage}
         {/* {title}<br />
@@ -604,20 +607,16 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
               case ShareType.Folder:
                 const folder = await sp.web.getFolderByServerRelativePath(folderServerRelativePath).getItem()
                 setTeamPermissions(await folder.getUserEffectivePermissions(teamsLoginName));
-
               default:
                 setTeamPermissions(null)
             }
           }}
-
         />
         {!canManageTabs && selectedTeam.length > 0 &&
           <MessageBar messageBarType={MessageBarType.error} >
             You do not have permission to create tabs in this team.
           </MessageBar>
         }
-
-
         <TeamChannelPicker label={`What Channel would you like to share this ${ShareType[shareType]}  to?`}
           teamId={selectedTeam.length > 0 ? selectedTeam[0].key : null}
           selectedChannels={selectedTeamChannels}
@@ -626,22 +625,20 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
           onSelectedChannels={(tagList: ITag[]) => {
             setSelectedTeamChannels(tagList);
           }} />
-        <ChoiceGroup
-
-          label="How would you like to share this?"
-          title="View"
-          options={[
-            { key: "0", text: "In a tab", },
-            { key: "1", text: "In a chat", } // could us a sharing link to share this in a chat maybe???
-          ]}
-          selectedKey={shareMethod.toString()}
-          onChange={(e, o) => {
-
-            setShareMethod(parseInt(o.key))
-          }}
-
-
-        />
+        {shareType === ShareType.File &&  // cant share a  folder or library in a chat
+          <ChoiceGroup
+            label="How would you like to share this?"
+            title="View"
+            options={[
+              { key: "0", text: "In a tab", },
+              { key: "1", text: "In a chat", } // could us a sharing link to share this in a chat maybe???
+            ]}
+            selectedKey={shareMethod.toString()}
+            onChange={(e, o) => {
+              setShareMethod(parseInt(o.key))
+            }}
+          />
+        }
         {(shareType === ShareType.Folder || shareType === ShareType.Library) &&
           <ChoiceGroup
             label="Which view would you like to show in the Teams Tab?"
