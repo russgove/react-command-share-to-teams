@@ -1,6 +1,4 @@
 import { override } from "@microsoft/decorators";
-import { Log } from "@microsoft/sp-core-library";
-//import ShareToTeamsDialog from "../../dialogs/ShareToTeams";
 import {
   ShareToTeamsContent,
   IShareToTeamsProps,
@@ -11,55 +9,28 @@ import {
   IListViewCommandSetListViewUpdatedParameters,
   IListViewCommandSetExecuteEventParameters,
 } from "@microsoft/sp-listview-extensibility";
-import { Dialog } from "@microsoft/sp-dialog";
-import {
-  AadHttpClient,
-  HttpClientResponse,
-  MSGraphClient,
-  AadHttpClientConfiguration,
-} from "@microsoft/sp-http";
 
 import "@pnp/graph/users";
-import { spfi, SPFx } from "@pnp/sp";
-
-import * as strings from "ShareToTeamsCommandSetStrings";
-import { graphfi } from "@pnp/graph";
-import { SPFx as SPFxgr } from "@pnp/graph";
 import * as ReactDOM from "react-dom";
 import * as React from "react";
-import { assign } from "lodash";
-import { BaseComponentContext } from "@microsoft/sp-component-base";
 
-/**
- * If your command set uses the ClientSideComponentProperties JSON input,
- * it will be deserialized into the BaseExtension.properties object.
- * You can define an interface to describe it.
- */
 export interface IShareToTeamsCommandSetProperties {
   supportedFileTypes: string; //tenantproperties?
   allowListSharing: boolean;
   allowFolderSharing: boolean;
   allowFileSharing: boolean;
-  librarySharingMethod: string; // "native" attempts to use the navis teams app. "page" just opens a sharepoint page
+  librarySharingMethod: string; // "native" attempts to use the native teams app. "page" just opens a sharepoint page
   folderSharingMethod: string;
   fileSharingMethod: string;
 }
 
-const LOG_SOURCE: string = "ShareToTeamsCommandSet";
-
 export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShareToTeamsCommandSetProperties> {
-  private msGraphClient: MSGraphClient;
   private panelPlaceHolder: HTMLDivElement = null;
   private panelProps:IShareToTeamsProps;
   
   @override
   public async onInit(): Promise<void> {
     await super.onInit();
-    await this.context.msGraphClientFactory
-      .getClient()
-      .then((client: MSGraphClient): void => {
-        this.msGraphClient = client;
-      });
     // Create the container for our React component
     this.panelPlaceHolder = document.body.appendChild(
       document.createElement("div")
@@ -74,8 +45,7 @@ export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShar
     const shareToTeamsCommand: Command = this.tryGetCommand(
       "COMMAND_SHARE_TO_TEAMS"
     );
-   
-    if (shareToTeamsCommand) {
+       if (shareToTeamsCommand) {
       if (event.selectedRows.length == 1) {
         //
         switch (event.selectedRows[0].getValueByName("FSObjType")) {
@@ -133,7 +103,6 @@ export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShar
 
     this.panelProps = {
       event: event,
-      msGraphClient: this.msGraphClient,
       settings: this.properties,
       context: this.context,
       onClose: this._dismissPanel.bind(this),

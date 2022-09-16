@@ -1,6 +1,5 @@
 import { ChatMessage, Drive, DriveItem, TeamsTab } from "@microsoft/microsoft-graph-types";
 import { BaseComponentContext } from "@microsoft/sp-component-base";
-import { MSGraphClient } from "@microsoft/sp-http";
 import { IListViewCommandSetExecuteEventParameters } from "@microsoft/sp-listview-extensibility";
 import { graphfi, SPFx as SPFxGR } from "@pnp/graph";
 import "@pnp/graph/";
@@ -47,7 +46,6 @@ import { ShareMethod, ShareType } from "../model/model";
 export interface IShareToTeamsProps {
 
   onClose: () => void;
-  msGraphClient: MSGraphClient;
   context: BaseComponentContext;
   event: IListViewCommandSetExecuteEventParameters;
   settings: IShareToTeamsCommandSetProperties;
@@ -338,21 +336,32 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
     let chatMessage: ChatMessage = {}
     switch (shareType) {
       case ShareType.Library:
-        alert("cannot share library in chat")
+        //alert("cannot share library in chat")
+        const attachId1="1";
+        chatMessage = {
+          "body": {
+            "contentType": "html",
+            "content": `${chatMessageText} <attachment id="${attachId1}"></attachment>`
+          },
+          "attachments": [
+            {
+              "id": null,
+              "contentType": "reference",
+              "contentUrl": document.location.origin + library["RootFolder"]["ServerRelativeUrl"],
+              "name": "Test"
+            }
+          ]
+        }
         break;
       case ShareType.Folder:
         alert("cannot share  folder in chat")
         break;
       case ShareType.File:
         const site = graph.sites.getById(props.context.pageContext.site.id.toString());
-
-
-
         const drives: Drive[] = await Site(site, "drives?$select=name,id")();
         const drivex = find(drives, (d) => { return d.name === libraryName });
         const fileLibraryRelativeUrl = item.File.ServerRelativeUrl.replace(library["RootFolder"]["ServerRelativeUrl"], '');
         const driveItem: DriveItem = await Site(site, `drives/${drivex.id}/root:${fileLibraryRelativeUrl}`)() as DriveItem;
-
         // driveitem.tag looks like this:"{A24C417C-469A-4CE8-B176-C254D44E67FB},10" (WITH the quotes...wtf)
         const attachId = driveItem.eTag.replace("\"", "").split(",")[0].replace("{", "").replace("}", "");
         chatMessage = {
