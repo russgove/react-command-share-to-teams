@@ -3,7 +3,7 @@
 
 ## Summary
 
-This feature adds a list view command that lets a user Share the current List or Library, or any Folder or File in it to a Team. The extension grants the Team Members access to the selected object and Adds it as a Tab or in a Channel Message to the selected Teams Channel.
+This feature adds a list view command that lets a user Share the current List or Library, or any Folder or File in it with a Team. The extension grants the Team Members access to the selected object and adds it as a Tab or in a Channel Message to the selected Teams Channel.
 
 ![picture of the extension in action](assets/preview.png)
 
@@ -62,32 +62,45 @@ This app requires access to the following Graph APIs:
 
 This feature adds a list view command that lets a user Share the current List or Library, or any Folder or File in it to a Team. 
 This is particularly useful if you have a file, or a set of files that need to be accessed or updated by multiple teams. The file(s)
-can remain in your central repository, but members of your chosen team can access the file(s) from within their respective teams.
+can remain in your central repository, but members of your chosen teams can access the file(s) from within their respective teams.
 
 Teams has multiple ways to add Tabs for  content that resides in SharePoint with Teams members as outlined in this article: https://docs.microsoft.com/en-us/graph/teams-configuring-builtin-tabs.
 
-It is possible to attach files (not folders or libraries) to a chat message.
+It is also possible to attach files (not folders or libraries) to a chat message.
 
-This command set enables each of the above  options.
+This command set enables each of the above  options from within SharePoint.
 
 As noted in the artice above, when adding a file tab you have the option of using the Teams Word, Excel, PowerPoint, and PDF built-in tabs (com.microsoft.teamspace.tab.file.staticviewer.word, .excel, .powerpoint, .pdf) or we can us the built in  'SharePoint page and list tabs'(2a527703-1f6f-4559-a332-d8a7d288cd88) to show a SharePoint page that shows the document.
 
-The configuation parameter called 'fileSharingMethod' controls which type of tab is added for files. Setting fileSharingMethod to 'page' causes the app to add file tabs using the 'SharePoint page and list tabs'(2a527703-1f6f-4559-a332-d8a7d288cd88). Setting fileSharingMethod to 'native' causes the app to add file tabs using the Teams Word, Excel, PowerPoint, and PDF built-in tabs (com.microsoft.teamspace.tab.file.staticviewer.word, .excel, .powerpoint, .pdf).
+The configuation parameter called 'fileSharingMethod' controls which type of tab is added for files. Setting fileSharingMethod to 'page' causes the app to add file tabs using the 'SharePoint page and list tabs'(teamsAppId 2a527703-1f6f-4559-a332-d8a7d288cd88).A sample is shown here:
+![file displayed in page mode](assets/filepage.png)
+
+Setting fileSharingMethod to 'native' causes the app to add file tabs using the Teams Word, Excel, PowerPoint, and PDF built-in tabs (teamsAppId com.microsoft.teamspace.tab.file.staticviewer.word, .excel, .powerpoint, .pdf). A sample is shown here:
+![file displayed in native mode](assets/filenative.png)
+
 
 You can also disable file sharing completely by setting allowFileSharing to false.
 
+The configuation parameters called 'librarySharingMethod' and 'folderSharingMethod' control which type of tab is added for libraries and folders. Setting librarySharingMethod to 'page' causes the app to add library tabs using the 'SharePoint page and list tabs'(teamsAppId 2a527703-1f6f-4559-a332-d8a7d288cd88). A sample is shown here:
+![library displayed in page mode](assets/librarypage.png)
+Note that in 'page' mode, a limited header bar is shown with commands and the columns can be sorted and filtered and grouped. No Open in SharePoint button is shown)
+
+Setting librarySharingMethod to 'native' causes the app to add file tabs using the Document library tabs built-in tabs (teamsAppId com.microsoft.teamspace.tab.files.sharepoint). Te same setup works for folders as well using 'folderSharingMethod'  A sample is shown here:
+![library displayed in native mode](assets/libraryNative.png)
+Note that in 'native' mode, the SharePoint header bar is replaced with a header bar created by the Teams app and includes the Open in SharePoint button. The columns can be sorted, but not filtered or grouped.
+
+
+You can also disable library and folder sharing completely by setting allowLibrarySharing and allowFolderSharing to false.
 
 ## Debug URL for testing
 
 Here's a debug URL for testing around this sample.
 
 ```
-?loadSPFX=true&debugManifestsFile=https://localhost:4321/temp/manifests.js&customActions={"7c5a85c1-8b1e-4370-8198-642908faee60":{"location":"ClientSideExtension.ApplicationCustomizer","properties":{"testMessage":"Hello as property!"}}}
+?debugManifestsFile=https%3A%2F%2Flocalhost%3A4321%2Ftemp%2Fmanifests.js&loadSPFX=true&customActions=%7B%2202b09893-193a-47bb-85e6-0280fbfd41dc%22%3A%7B%22location%22%3A%22ClientSideExtension.ListViewCommandSet.CommandBar%22%2C%22properties%22%3A%7B%22supportedFileTypes%22%3A%22doc%2C+docx%2C+pdf%2C+ppsx%2C+ppt%2C+pptx%2C+jpg%2C+jpeg%2C+png%2C+xls%2C+xlsx%2C+txt%2C+html%2C+gif%2C+aspx%22%2C%22allowListSharing%22%3Atrue%2C%22allowFolderSharing%22%3Atrue%2C%22allowFileSharing%22%3Atrue%2C%22librarySharingMethod%22%3A%22page%22%2C%22folderSharingMethod%22%3A%22page%22%2C%22fileSharingMethod%22%3A%22native%22%7D%7D%7D
 ```
 
-> Update based on your manifest id for easy testing of the sample
-> Note that better pictures and documentation will increase the sample usage and the value you are providing for others. Thanks for your submissions inadvance! You rock ❤.
-> DELETE THIS PARAGRAPH BEFORE SUBMITTING
+
 
 ## Disclaimer
 
