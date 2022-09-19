@@ -3,10 +3,10 @@
     "solution": {
         "name": "Share to Teams",
         "id": "98fc8351-80c6-4dd8-9593-aa1127531ef2",
-        "version": "18.0.0.0",
+        "version": "21.0.0.0",
         "includeClientSideAssets": true,
         "iconPath": "images/teamsicon.png",
-        "skipFeatureDeployment": true,
+        "skipFeatureDeployment": false,
         "isDomainIsolated": false,
         "webApiPermissionRequests": [{
                 "resource": "Microsoft Graph",
@@ -66,6 +66,7 @@
             "version": "1.0.0.0",
             "assets": {
                 "elementManifests": [
+                    "elements.xml",
                     "ClientSideInstance.xml"
                 ]
             }
