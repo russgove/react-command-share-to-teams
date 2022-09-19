@@ -612,11 +612,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
             }
           }}
         />
-        {!canManageTabs && selectedTeam.length > 0 &&
-          <MessageBar messageBarType={MessageBarType.error} >
-            You do not have permission to create tabs in this team.
-          </MessageBar>
-        }
+        {cantManageTabsMessage}
         <TeamChannelPicker label={`What Channel would you like to share this ${ShareType[shareType]}  to?`}
           teamId={selectedTeam.length > 0 ? selectedTeam[0].key : null}
           selectedChannels={selectedTeamChannels}
@@ -648,7 +644,6 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
             onChange={(e, o) => { setSelectedViewId(o.key) }}
           />
         }
-        {cantManageTabsMessage}
         {existingPermissionsMessage}
         {noExistingPermissionsMessage}
 
