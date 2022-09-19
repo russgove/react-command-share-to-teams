@@ -92,6 +92,10 @@ Note that in 'native' mode, the SharePoint header bar is replaced with a header 
 
 You can also disable library and folder sharing completely by setting allowLibrarySharing and allowFolderSharing to false.
 
+If you do not have permissions to share the selected library, folder, or file, the Share To Teams commmand will be unavailable. Also, if you select a team that you do not hape permissions to add tabs to you will get an error message stating so:
+![library displayed in native mode](assets/noPermissions.png)
+
+
 ## Debug URL for testing
 
 Here's a debug URL for testing around this sample.
