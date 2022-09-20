@@ -39,7 +39,7 @@ import { TextField } from "office-ui-fabric-react/lib/TextField";
 import * as React from "react";
 import { useEffect } from "react";
 import { IShareToTeamsCommandSetProperties } from "../extensions/shareToTeams/ShareToTeamsCommandSet";
-import { ShareMethod, ShareType } from "../model/model";
+import { ShareType } from "../model/model";
 
 
 // import "@pnp/graph/onedrive";
@@ -55,7 +55,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
   const sp = spfi().using(SPFx(props.context));
   const graph = graphfi().using(SPFxGR(props.context));
   const [shareType, setShareType] = React.useState<ShareType>(null);
-  const [shareMethod, setShareMethod] = React.useState<ShareMethod>(0);
+  //const [shareMethod, setShareMethod] = React.useState<ShareMethod>(0);
   const [item, setItem] = React.useState<any>(null);
 
   const [canManageTabs, setCanManageTabs] = React.useState<boolean>(false);
@@ -107,7 +107,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
           // its a folder
 
           setShareType(ShareType.Folder);
-          setShareMethod(ShareMethod.ChannelTab);// cant share a  folder in a chat
+          //setShareMethod(ShareMethod.ChannelTab);// cant share a  folder in a chat
           setFolderServerRelativePath(locItem["Folder"]["ServerRelativeUrl"]);
 
           setTabName(props.context.pageContext.list.title);// see if user has permissions to share this folder
@@ -127,7 +127,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
           setFolderServerRelativePath(folderServerRelativePathFromUrl);
 
           setShareType(ShareType.Folder);
-          setShareMethod(ShareMethod.ChannelTab);// cant share a  folder in a chat
+         // setShareMethod(ShareMethod.ChannelTab);// cant share a  folder in a chat
           await sp.web.getFolderByServerRelativePath(folderServerRelativePathFromUrl)
             .expand("ListItemAllFields/EffectiveBasePermissions")()
             .then(folder => {
@@ -137,7 +137,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
         } else {
           // they are at the root of the list
           setShareType(ShareType.Library)
-          setShareMethod(ShareMethod.ChannelTab);// cant share a  library in a chat
+          //setShareMethod(ShareMethod.ChannelTab);// cant share a  library in a chat
 
           await sp.web.lists.getById(locListId).select("Title", "EffectiveBasePermissions")()
             .then(list => {
@@ -178,14 +178,14 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
   }
 
   async function shareToTeams() {
-
+debugger;
 
     const teamId: string = selectedTeam[0].key as string;
     const channelId: string = selectedTeamChannels[0].key as string;
     const channel = await graph.teams.getById(teamId).channels.getById(channelId);
     const channelTabs = await graph.teams.getById(teamId).channels.getById(channelId).tabs;
-    switch (shareMethod) {
-      case ShareMethod.ChannelTab:
+    // switch (shareMethod) {
+    //   case ShareMethod.ChannelTab:
         let [teamsTab, appUrl] = await getTeamsTabConfig();
         teamsTab.displayName = tabName;
         switch (shareType) {
@@ -209,29 +209,29 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
           });
 
 
-        break;
-      case ShareMethod.ChannelMessage:
-        let chatMessage: ChatMessage = await getChatMessageConfig();
+    //     break;
+    //   // case ShareMethod.ChannelMessage:
+    //   //   let chatMessage: ChatMessage = await getChatMessageConfig();
 
-        switch (shareType) {
-          case ShareType.Library:
-            await grantTeamMembersAcessToLibrary(teamId, selectedRoleDefinitionId);
-            break;
+    //   //   switch (shareType) {
+    //   //     case ShareType.Library:
+    //   //       await grantTeamMembersAcessToLibrary(teamId, selectedRoleDefinitionId);
+    //   //       break;
 
-          case ShareType.Folder:
-            await grantTeamMembersAcessToFolder(teamId, selectedRoleDefinitionId);
-            break;
+    //   //     case ShareType.Folder:
+    //   //       await grantTeamMembersAcessToFolder(teamId, selectedRoleDefinitionId);
+    //   //       break;
 
-          case ShareType.File:
-            await grantTeamMembersAcessToItem(teamId, selectedRoleDefinitionId);
-            break;
-        }
+    //   //     case ShareType.File:
+    //   //       await grantTeamMembersAcessToItem(teamId, selectedRoleDefinitionId);
+    //   //       break;
+    //   //   }
 
-        channel.messages(chatMessage);
-        break;
-      default:
-        alert('Invalid Share Method')
-    }
+    //   //   channel.messages(chatMessage);
+    //   //   break;
+    //   default:
+    //     alert('Invalid Share Method')
+    // }
     props.onClose();
   }
   async function getTeamsTabConfig(): Promise<[TeamsTab, string]> {
@@ -335,56 +335,57 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
     }
 
   }
-  async function getChatMessageConfig(): Promise<ChatMessage> {
-    let chatMessage: ChatMessage = {}
-    switch (shareType) {
-      case ShareType.Library:
-        //alert("cannot share library in chat")
-        const attachId1 = "1";
-        chatMessage = {
-          "body": {
-            "contentType": "html",
-            "content": `${chatMessageText} <attachment id="${attachId1}"></attachment>`
-          },
-          "attachments": [
-            {
-              "id": null,
-              "contentType": "reference",
-              "contentUrl": document.location.origin + library["RootFolder"]["ServerRelativeUrl"],
-              "name": "Test"
-            }
-          ]
-        }
-        break;
-      case ShareType.Folder:
-        alert("cannot share  folder in chat")
-        break;
-      case ShareType.File:
-        const site = graph.sites.getById(props.context.pageContext.site.id.toString());
-        const drives: Drive[] = await Site(site, "drives?$select=name,id")();
-        const drivex = find(drives, (d) => { return d.name === libraryName });
-        const fileLibraryRelativeUrl = item.File.ServerRelativeUrl.replace(library["RootFolder"]["ServerRelativeUrl"], '');
-        const driveItem: DriveItem = await Site(site, `drives/${drivex.id}/root:${fileLibraryRelativeUrl}`)() as DriveItem;
-        // driveitem.tag looks like this:"{A24C417C-469A-4CE8-B176-C254D44E67FB},10" (WITH the quotes...wtf)
-        const attachId = driveItem.eTag.replace("\"", "").split(",")[0].replace("{", "").replace("}", "");
-        chatMessage = {
-          "body": {
-            "contentType": "html",
-            "content": `${chatMessageText} <attachment id="${attachId}"></attachment>`
-          },
-          "attachments": [
-            {
-              "id": attachId,
-              "contentType": "reference",
-              "contentUrl": document.location.origin + item.File.ServerRelativeUrl,
-              "name": driveItem.name
-            }
-          ]
-        }
-        break;
-    }
-    return chatMessage;
-  }
+  // async function getChatMessageConfig(): Promise<ChatMessage> {
+  //   debugger;
+  //   let chatMessage: ChatMessage = {}
+  //   switch (shareType) {
+  //     case ShareType.Library:
+  //       //alert("cannot share library in chat")
+  //       const attachId1 = "1";
+  //       chatMessage = {
+  //         "body": {
+  //           "contentType": "html",
+  //           "content": `${chatMessageText} <attachment id="${attachId1}"></attachment>`
+  //         },
+  //         "attachments": [
+  //           {
+  //             "id": null,
+  //             "contentType": "reference",
+  //             "contentUrl": document.location.origin + library["RootFolder"]["ServerRelativeUrl"],
+  //             "name": "Test"
+  //           }
+  //         ]
+  //       }
+  //       break;
+  //     case ShareType.Folder:
+  //       alert("cannot share  folder in chat")
+  //       break;
+  //     case ShareType.File:
+  //       const site = graph.sites.getById(props.context.pageContext.site.id.toString());
+  //       const drives: Drive[] = await Site(site, "drives?$select=name,id")();
+  //       const drivex = find(drives, (d) => { return d.name === libraryName });
+  //       const fileLibraryRelativeUrl = item.File.ServerRelativeUrl.replace(library["RootFolder"]["ServerRelativeUrl"], '');
+  //       const driveItem: DriveItem = await Site(site, `drives/${drivex.id}/root:${fileLibraryRelativeUrl}`)() as DriveItem;
+  //       // driveitem.tag looks like this:"{A24C417C-469A-4CE8-B176-C254D44E67FB},10" (WITH the quotes...wtf)
+  //       const attachId = driveItem.eTag.replace("\"", "").split(",")[0].replace("{", "").replace("}", "");
+  //       chatMessage = {
+  //         "body": {
+  //           "contentType": "html",
+  //           "content": `${chatMessageText} <attachment id="${attachId}"></attachment>`
+  //         },
+  //         "attachments": [
+  //           {
+  //             "id": attachId,
+  //             "contentType": "reference",
+  //             "contentUrl": document.location.origin + item.File.ServerRelativeUrl,
+  //             "name": driveItem.name
+  //           }
+  //         ]
+  //       }
+  //       break;
+  //   }
+  //   return chatMessage;
+  // }
   function hasPermissions(existingPermissions: any, requiredPermissions: any) { // hig and low are strings , not numbers!
     // see : https://www.w3schools.com/js/js_bitwise.asp
     // and  : https://www.darraghoriordan.com/2019/07/29/bitwise-mask-typescript/
@@ -514,7 +515,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
       <FList
         items={filter(roleDefinitionInfos, rd => hasPermissions(teamPermissions, rd.BasePermissions))}
         onRenderCell={(item?, index?: number, isScrolling?: boolean) => {
-          debugger;
+
           return (
             <div>
               {item.Description}
@@ -554,7 +555,6 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
           itemLimit={1}
 
           onSelectedTeams={async (tagList: ITag[]) => {
-            debugger;
             setSelectedTeam(tagList);
             setTeamPermissions(null);
             setSelectedTeamChannels([]); // deselec any channel;s from old team
@@ -591,22 +591,24 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
               .catch(err => {
                 console.log(err);
               });
-            debugger;
             // get the teams permissions
             const teamsLoginName = getTeamLoginName(tagList[0].key as string);
             switch (shareType) {
               case ShareType.Library:
                 setTeamPermissions(await sp.web.lists
                   .getById(props.context.pageContext.list.id.toString()).getUserEffectivePermissions(teamsLoginName));
-
+                break; //gimme a break!
               case ShareType.File:
                 const selectedItem = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
                   .items.getById(item["Id"]);
-                setTeamPermissions(await selectedItem.getUserEffectivePermissions(teamsLoginName))
-
+                debugger;
+                setTeamPermissions(await selectedItem.getUserEffectivePermissions(teamsLoginName));
+                debugger;
+                break; //gimme a break!
               case ShareType.Folder:
                 const folder = await sp.web.getFolderByServerRelativePath(folderServerRelativePath).getItem()
                 setTeamPermissions(await folder.getUserEffectivePermissions(teamsLoginName));
+                break; //gimme a break!
               default:
                 setTeamPermissions(null)
             }
@@ -621,7 +623,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
           onSelectedChannels={(tagList: ITag[]) => {
             setSelectedTeamChannels(tagList);
           }} />
-        {shareType === ShareType.File &&  // cant share a  folder or library in a chat
+        {/* {shareType === ShareType.File &&  // cant share a  folder or library in a chat
           <ChoiceGroup
             label="How would you like to share this?"
             title="View"
@@ -634,7 +636,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
               setShareMethod(parseInt(o.key))
             }}
           />
-        }
+        } */}
         {(shareType === ShareType.Folder || shareType === ShareType.Library) &&
           <ChoiceGroup
             label="Which view would you like to show in the Teams Tab?"
@@ -658,19 +660,19 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
             setSelectedRoleDefinitionId(parseInt(o.key))
           }}
         />
-        {shareMethod == ShareMethod.ChannelTab &&
+        {/* {shareMethod == ShareMethod.ChannelTab && */}
           <div>
             <TextField label="What would you like the Title of the Teams Tab to be?" onChange={(e, newValue) => { setTabName(newValue) }} value={tabName} />
             <br />
           </div>
-        }
+        {/* } */}
 
-        {shareMethod == ShareMethod.ChannelMessage &&
+        {/* {shareMethod == ShareMethod.ChannelMessage &&
           <div>
             <TextField label="What would you like the text of the Chat Message to be?" onChange={(e, newValue) => { setChatMessageText(newValue) }} value={chatMessageText} />
             <br />
           </div>
-        }
+        } */}
         <PrimaryButton disabled={!canManageTabs || selectedRoleDefinitionId === null || selectedTeam.length == 0 || selectedTeamChannels.length == 0 || tabName.length == 0} onClick={shareToTeams}> Add Tab to Team</PrimaryButton>
       </div>
 
@@ -681,46 +683,3 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
   );
 
 }
-
-// export default class ShareToTeamsDialog extends BaseDialog {
-
-//   public title: string;
-//   public event: IListViewCommandSetExecuteEventParameters;
-//   public msGraphClient: MSGraphClient;
-//   public context: BaseComponentContext;
-//   public settings: IShareToTeamsCommandSetProperties;
-//   public render(): void {
-//     ReactDOM.render(
-//       <ShareToTeamsContent
-//         event={this.event}
-//         msGraphClient={this.msGraphClient}
-//         title="SS"
-//         settings={this.settings}
-//         context={this.context}
-//         onClose={this.close}
-//       />,
-//       this.domElement
-//     );
-//   }
-
-//   public getConfig(): IDialogConfiguration {
-//     return {
-//       isBlocking: true,
-//     };
-//   }
-
-//   protected onAfterClose(): void {
-//     super.onAfterClose();
-//     // Clean up the element for the next dialog
-//     ReactDOM.unmountComponentAtNode(this.domElement);
-//   }
-// }
-
-
-
-
-
-
-
-
-

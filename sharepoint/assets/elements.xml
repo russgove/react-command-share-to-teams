@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Elements xmlns="http://schemas.microsoft.com/sharepoint/">
     <CustomAction
+
         Title="ShareToTeams"
         RegistrationId="101"
         RegistrationType="List"
@@ -9,6 +10,7 @@
         ClientSideComponentProperties="{&quot;supportedFileTypes&quot;: &quot;doc, docx, pdf, ppsx, ppt, pptx, jpg, jpeg, png, xls, xlsx, txt, html, gif&quot;,&quot;allowListSharing&quot;:true,&quot;allowFolderSharing&quot;:true,&quot;allowFileSharing&quot;:true,&quot;librarySharingMethod&quot;:&quot;page&quot;,&quot;folderSharingMethod&quot;:&quot;native&quot;}">
     </CustomAction>
     <CustomAction
+
     Title="ShareToTeams"
     RegistrationId="100"
     RegistrationType="List"
