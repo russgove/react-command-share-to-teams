@@ -3,7 +3,7 @@
 
 ## Summary
 
-This feature adds a list view command that lets a user Share the current List or Library, or any Folder or File in it with a Team. The extension grants the Team Members access to the selected object and adds it as a Tab or in a Channel Message to the selected Teams Channel.
+This feature adds a list view command that lets a user Share the current List or Library, or any Folder or File in it with a Team. The extension grants the Team Members access to the selected object and adds it as a Tab to the selected Teams Channel.
 
 ![picture of the extension in action](assets/preview.png)
 
@@ -62,39 +62,46 @@ This app requires access to the following Graph APIs:
 
 This feature adds a list view command that lets a user Share the current List or Library, or any Folder or File in it to a Team. 
 This is particularly useful if you have a file, or a set of files that need to be accessed or updated by multiple teams. The file(s)
-can remain in your central repository, but members of your chosen teams can access the file(s) from within their respective teams.
+can remain in your central repository, but members of your chosen teams can access the file(s) from within their respective teams. This way you have a 'single source of truth' for all your documents.
 
 Teams has multiple ways to add Tabs for  content that resides in SharePoint with Teams members as outlined in this article: https://docs.microsoft.com/en-us/graph/teams-configuring-builtin-tabs.
 
-It is also possible to attach files (not folders or libraries) to a chat message.
-
 This command set enables each of the above  options from within SharePoint.
 
-As noted in the artice above, when adding a file tab you have the option of using the Teams Word, Excel, PowerPoint, and PDF built-in tabs (com.microsoft.teamspace.tab.file.staticviewer.word, .excel, .powerpoint, .pdf) or we can us the built in  'SharePoint page and list tabs'(2a527703-1f6f-4559-a332-d8a7d288cd88) to show a SharePoint page that shows the document.
+As noted in the artice above, when adding a file tab you have the option of using the Teams Word, Excel, PowerPoint, and PDF built-in tabs (com.microsoft.teamspace.tab.file.staticviewer.word, .excel, .powerpoint, .pdf) or we can use the built in  'SharePoint page and list tabs'(2a527703-1f6f-4559-a332-d8a7d288cd88) to show a SharePoint page that shows the document.
 
 The configuation parameter called 'fileSharingMethod' controls which type of tab is added for files. Setting fileSharingMethod to 'page' causes the app to add file tabs using the 'SharePoint page and list tabs'(teamsAppId 2a527703-1f6f-4559-a332-d8a7d288cd88).A sample is shown here:
 ![file displayed in page mode](assets/filepage.png)
 
 Setting fileSharingMethod to 'native' causes the app to add file tabs using the Teams Word, Excel, PowerPoint, and PDF built-in tabs (teamsAppId com.microsoft.teamspace.tab.file.staticviewer.word, .excel, .powerpoint, .pdf). A sample is shown here:
 ![file displayed in native mode](assets/filenative.png)
+For non-Office documents, the app will revert to showing the file using the 'SharePoint page and list tabs'(teamsAppId 2a527703-1f6f-4559-a332-d8a7d288cd88)
 
 
-You can also disable file sharing completely by setting allowFileSharing to false.
+You can also disable file sharing completely by setting allowFileSharing to false. You can also set the specific file extensions you want to allow sharing be setting the supportedFileTypes property.
 
 The configuation parameters called 'librarySharingMethod' and 'folderSharingMethod' control which type of tab is added for libraries and folders. Setting librarySharingMethod to 'page' causes the app to add library tabs using the 'SharePoint page and list tabs'(teamsAppId 2a527703-1f6f-4559-a332-d8a7d288cd88). A sample is shown here:
 ![library displayed in page mode](assets/librarypage.png)
-Note that in 'page' mode, a limited header bar is shown with commands and the columns can be sorted and filtered and grouped. No Open in SharePoint button is shown)
+Note that in 'page' mode, a limited header bar is shown with the SharePoint commands and the columns can be sorted and filtered and grouped. You can also select which view you would like to show in the Teams Tab. No Open in SharePoint button is shown when viewerd in teams.
 
-Setting librarySharingMethod to 'native' causes the app to add file tabs using the Document library tabs built-in tabs (teamsAppId com.microsoft.teamspace.tab.files.sharepoint). Te same setup works for folders as well using 'folderSharingMethod'  A sample is shown here:
+Setting librarySharingMethod to 'native' causes the app to add file tabs using the Document library tabs built-in tabs (teamsAppId com.microsoft.teamspace.tab.files.sharepoint). The same setup works for folders as well using 'folderSharingMethod'  A sample is shown here:
 ![library displayed in native mode](assets/libraryNative.png)
-Note that in 'native' mode, the SharePoint header bar is replaced with a header bar created by the Teams app and includes the Open in SharePoint button. The columns can be sorted, but not filtered or grouped.
+Note that in 'native' mode, the SharePoint header bar is replaced with a header bar created by the Teams app and includes the Open in SharePoint button. The columns can be sorted, but not filtered or grouped. You cannot select a 
+view when sharing using this method. 
 
 
 You can also disable library and folder sharing completely by setting allowLibrarySharing and allowFolderSharing to false.
 
-If you do not have permissions to share the selected library, folder, or file, the Share To Teams commmand will be unavailable. Also, if you select a team that you do not hape permissions to add tabs to you will get an error message stating so:
+If you do not have permissions to share the selected library, folder, or file, the Share To Teams commmand will be unavailable because you do not have permission to alter permissions. When you share a library, folder, or file the the app breaks role inheritance on the object and grants the O365 Group backing the Team the permission you selected on the given object,
+
+Also, if you select a team that you do not hape permissions to add tabs to you will get an error message stating so:
 ![library displayed in native mode](assets/noPermissions.png)
 
+
+Notes: 
+1. If the SharePint site does not allow external Sharing, team members outsied your domain (guests) will not be able to view the items shared.
+
+2. If you share something with a Teams Private Channel, all members of the Team are granted access to the item.
 
 ## Debug URL for testing
 
@@ -114,14 +121,14 @@ Here's a debug URL for testing around this sample.
 
 We do not support samples, but we this community is always willing to help, and we want to improve these samples. We use GitHub to track issues, which makes it easy for  community members to volunteer their time and help resolve issues.
 
-You can try looking at [issues related to this sample](https://github.com/pnp/sp-dev-fx-extensions/issues?q=label%3AYOUR-SOLUTION-NAME) to see if anybody else is having the same issues.
+You can try looking at [issues related to this sample](https://github.com/pnp/sp-dev-fx-extensions/issues?q=label%3Areact-command-share-to-teams) to see if anybody else is having the same issues.
 
-You can also try looking at [discussions related to this sample](https://github.com/pnp/sp-dev-fx-extensions/discussions?discussions_q=label%3AYOUR-SOLUTION-NAME) and see what the community is saying.
+You can also try looking at [discussions related to this sample](https://github.com/pnp/sp-dev-fx-extensions/discussions?discussions_q=label%3Areact-command-share-to-teams) and see what the community is saying.
 
-If you encounter any issues while using this sample, [create a new issue](https://github.com/pnp/sp-dev-fx-extensions/issues/new?assignees=&labels=Needs%3A+Triage+%3Amag%3A%2Ctype%3Abug-suspected&template=bug-report.yml&sample=YOUR-SOLUTION-NAME&authors=@YOURGITHUBUSERNAME&title=YOUR-SOLUTION-NAME%20-%20).
+If you encounter any issues while using this sample, [create a new issue](https://github.com/pnp/sp-dev-fx-extensions/issues/new?assignees=&labels=Needs%3A+Triage+%3Amag%3A%2Ctype%3Abug-suspected&template=bug-report.yml&sample=Yreact-command-share-to-teams&authors=@russgove&title=react-command-share-to-teams%20-%20).
 
-For questions regarding this sample, [create a new question](https://github.com/pnp/sp-dev-fx-extensions/issues/new?assignees=&labels=Needs%3A+Triage+%3Amag%3A%2Ctype%3Abug-suspected&template=question.yml&sample=YOUR-SOLUTION-NAME&authors=@YOURGITHUBUSERNAME&title=YOUR-SOLUTION-NAME%20-%20).
+For questions regarding this sample, [create a new question](https://github.com/pnp/sp-dev-fx-extensions/issues/new?assignees=&labels=Needs%3A+Triage+%3Amag%3A%2Ctype%3Abug-suspected&template=question.yml&sample=react-command-share-to-teams&authors=@russgove&title=react-command-share-to-teams%20-%20).
 
-Finally, if you have an idea for improvement, [make a suggestion](https://github.com/pnp/sp-dev-fx-extensions/issues/new?assignees=&labels=Needs%3A+Triage+%3Amag%3A%2Ctype%3Abug-suspected&template=suggestion.yml&sample=YOUR-SOLUTION-NAME&authors=@YOURGITHUBUSERNAME&title=YOUR-SOLUTION-NAME%20-%20).
+Finally, if you have an idea for improvement, [make a suggestion](https://github.com/pnp/sp-dev-fx-extensions/issues/new?assignees=&labels=Needs%3A+Triage+%3Amag%3A%2Ctype%3Abug-suspected&template=suggestion.yml&sample=react-command-share-to-teams&authors=@russgove&title=react-command-share-to-teams%20-%20).
 
 <img src="https://pnptelemetry.azurewebsites.net/sp-dev-fx-extensions/samples/readme-template" />
