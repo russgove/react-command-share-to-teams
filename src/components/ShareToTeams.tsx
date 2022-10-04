@@ -1,6 +1,8 @@
 import { ChatMessage, Drive, DriveItem, TeamsTab } from "@microsoft/microsoft-graph-types";
+import { IconButton } from "@microsoft/office-ui-fabric-react-bundle";
 import { BaseComponentContext } from "@microsoft/sp-component-base";
 import { IListViewCommandSetExecuteEventParameters } from "@microsoft/sp-listview-extensibility";
+import { ExistingShares, IExistingSharesProps } from "./ExistingShares"
 import { graphfi, SPFx as SPFxGR } from "@pnp/graph";
 import "@pnp/graph/";
 import "@pnp/graph/groups";
@@ -27,7 +29,7 @@ import "@pnp/sp/webs";
 import { TeamChannelPicker } from "@pnp/spfx-controls-react/lib/TeamChannelPicker";
 import { TeamPicker } from "@pnp/spfx-controls-react/lib/TeamPicker";
 import { filter, find } from "lodash";
-import { PrimaryButton } from "office-ui-fabric-react/lib/Button";
+import { MessageBarButton, PrimaryButton } from "office-ui-fabric-react/lib/Button";
 import { ChoiceGroup } from "office-ui-fabric-react/lib/ChoiceGroup";
 import { Label } from "office-ui-fabric-react/lib/Label";
 import { List as FList } from "office-ui-fabric-react/lib/List";
@@ -57,6 +59,8 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
   const [shareType, setShareType] = React.useState<ShareType>(null);
   //const [shareMethod, setShareMethod] = React.useState<ShareMethod>(0);
   const [item, setItem] = React.useState<any>(null);
+  const [existingShares, setExistingShares] = React.useState<any[]>(null);
+  const [showExistingShares, setShowExistingShares] = React.useState<boolean>(false);
 
   const [canManageTabs, setCanManageTabs] = React.useState<boolean>(false);
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
@@ -127,7 +131,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
           setFolderServerRelativePath(folderServerRelativePathFromUrl);
 
           setShareType(ShareType.Folder);
-         // setShareMethod(ShareMethod.ChannelTab);// cant share a  folder in a chat
+          // setShareMethod(ShareMethod.ChannelTab);// cant share a  folder in a chat
           await sp.web.getFolderByServerRelativePath(folderServerRelativePathFromUrl)
             .expand("ListItemAllFields/EffectiveBasePermissions")()
             .then(folder => {
@@ -147,6 +151,9 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
               setUserCanManagePermissions(userCanManagePermissions);
               setTitle(`Sharing list ${list["Title"]} to Teams`);
             });
+          debugger;
+          setExistingShares(await sp.web.lists.getById(locListId).roleAssignments.expand("Member,RoleDefinitionBindings").filter("startswith(Member/LoginName,'c:0o.c|federateddirectoryclaimprovider|')")());
+          debugger;
         }
 
       }
@@ -178,7 +185,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
   }
 
   async function shareToTeams() {
-debugger;
+    debugger;
 
     const teamId: string = selectedTeam[0].key as string;
     const channelId: string = selectedTeamChannels[0].key as string;
@@ -186,27 +193,27 @@ debugger;
     const channelTabs = await graph.teams.getById(teamId).channels.getById(channelId).tabs;
     // switch (shareMethod) {
     //   case ShareMethod.ChannelTab:
-        let [teamsTab, appUrl] = await getTeamsTabConfig();
-        teamsTab.displayName = tabName;
-        switch (shareType) {
-          case ShareType.Library:
-            await grantTeamMembersAcessToLibrary(teamId, selectedRoleDefinitionId);
-            break;
-          case ShareType.Folder:
-            await grantTeamMembersAcessToFolder(teamId, selectedRoleDefinitionId);
-            break;
-          case ShareType.File:
-            await grantTeamMembersAcessToItem(teamId, selectedRoleDefinitionId);
-            break;
-        }
-        await channelTabs.add('Tab', appUrl, teamsTab)
-          .then((t) => {
-            channel.messages({ body: { content: `I added a new tab named '${tabName}' to this channel.` } });
-          })
-          .catch((e) => {
-            debugger;
-            alert(e.message);
-          });
+    let [teamsTab, appUrl] = await getTeamsTabConfig();
+    teamsTab.displayName = tabName;
+    switch (shareType) {
+      case ShareType.Library:
+        await grantTeamMembersAcessToLibrary(teamId, selectedRoleDefinitionId);
+        break;
+      case ShareType.Folder:
+        await grantTeamMembersAcessToFolder(teamId, selectedRoleDefinitionId);
+        break;
+      case ShareType.File:
+        await grantTeamMembersAcessToItem(teamId, selectedRoleDefinitionId);
+        break;
+    }
+    await channelTabs.add('Tab', appUrl, teamsTab)
+      .then((t) => {
+        channel.messages({ body: { content: `I added a new tab named '${tabName}' to this channel.` } });
+      })
+      .catch((e) => {
+        debugger;
+        alert(e.message);
+      });
 
 
     //     break;
@@ -530,6 +537,22 @@ debugger;
     <MessageBar messageBarType={MessageBarType.blocked}>
       You do not have permission to share this. Please contact a site owner to share.
     </MessageBar>;
+  const exitingSharesMessage = existingShares.length > 0 &&
+    <MessageBar messageBarType={MessageBarType.info} actions={<div>
+      <PrimaryButton onClick={() => setShowExistingShares(true)}>View</PrimaryButton>
+    </div>}>
+      This {ShareType[shareType]} is currently shared with {existingShares.length} teams.
+
+    </MessageBar>;
+  if (showExistingShares) return (<ExistingShares
+    onClose={() => setShowExistingShares(false)}
+    existingShares={existingShares}
+    context={props.context}
+    shareType={shareType}
+    sp={sp}
+    title={`Existing Teams Shares for ${ShareType[shareType]} `}
+listId={props.context.pageContext.list.id.toString()}
+  />)
   return (
     <Panel
       isOpen={props.isOpen}
@@ -538,6 +561,7 @@ debugger;
     >
       <div>
         {cantShareMessage}
+        {exitingSharesMessage}
         {/* {title}<br />
         Teams Permission Hi is {teamPermissions ? teamPermissions.High : ""} low is{teamPermissions ? teamPermissions.Low : ""}<br />
         ShareType is {ShareType[shareType]}<br />
@@ -661,10 +685,10 @@ debugger;
           }}
         />
         {/* {shareMethod == ShareMethod.ChannelTab && */}
-          <div>
-            <TextField label="What would you like the Title of the Teams Tab to be?" onChange={(e, newValue) => { setTabName(newValue) }} value={tabName} />
-            <br />
-          </div>
+        <div>
+          <TextField label="What would you like the Title of the Teams Tab to be?" onChange={(e, newValue) => { setTabName(newValue) }} value={tabName} />
+          <br />
+        </div>
         {/* } */}
 
         {/* {shareMethod == ShareMethod.ChannelMessage &&
