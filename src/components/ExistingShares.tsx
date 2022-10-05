@@ -27,16 +27,17 @@ import { DetailsList, SelectionMode } from "office-ui-fabric-react/lib/DetailsLi
 import { Panel, PanelType } from "office-ui-fabric-react/lib/Panel";
 import * as React from "react";
 import { ShareType } from "../model/model";
+import { filter, map } from "lodash";
 
 
 // import "@pnp/graph/onedrive";
 export interface IExistingSharesProps {
-
+  setExistingShares: React.Dispatch<React.SetStateAction<any[]>>;
   onClose: () => void;
   existingShares: any[];
   title: string;
   context: BaseComponentContext;
-  shareType: ShareType, sp: SPFI,listId:string
+  shareType: ShareType, sp: SPFI, listId: string
 }
 export function ExistingShares(props: IExistingSharesProps) {
   const sp = spfi().using(SPFx(props.context));
@@ -50,7 +51,7 @@ export function ExistingShares(props: IExistingSharesProps) {
   return (
 
     <Panel
-      type={PanelType.medium}
+      // type={PanelType.medium}
       isOpen={true}
       onDismiss={props.onClose}
       headerText={props.title}
@@ -62,7 +63,7 @@ export function ExistingShares(props: IExistingSharesProps) {
 
               {
                 key: "cmd",
-                minWidth: 50, name: "",
+                minWidth: 20, name: "", isResizable: true,
                 onRender: (item?, index?, column?) => {
                   return <IconButton iconProps={{ iconName: "Edit" }} onClick={e => {
                     debugger;
@@ -72,7 +73,7 @@ export function ExistingShares(props: IExistingSharesProps) {
               },
               {
                 key: "Title",
-                minWidth: 400, name: "Team",
+                minWidth: 200, name: "Team", isResizable: true,
                 onRender: (item?, index?, column?) => {
                   return item.Member.Title
                 }
@@ -84,11 +85,27 @@ export function ExistingShares(props: IExistingSharesProps) {
           <ExistingShare
             existingShare={selectedTeamShare}
             context={props.context}
-            onClose={() => setSelectedTeamShare(null)}
+            onClose={() => { debugger; setSelectedTeamShare(null) }}
             shareType={props.shareType}
             title={props.title}
             sp={props.sp}
             listId={props.listId}
+            removeRoleAssignment={(roleDefId, principalId) => {
+              debugger;
+              //remove selected role
+              var tempExistingShares = map(props.existingShares, ((es) => {
+                if (es.PrincipalId === principalId) {
+                  es.RoleDefinitionBindings=filter(es.RoleDefinitionBindings,(rdb)=>{return rdb.Id !== roleDefId})
+                }
+                return es;
+              }
+              ));
+              // if no roles left remove the item
+              tempExistingShares=filter(tempExistingShares,(es)=>{return es.RoleDefinitionBindings.length >0})
+              props.setExistingShares(tempExistingShares);
+              debugger;
+
+            }}
 
 
           />

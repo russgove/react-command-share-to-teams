@@ -239,6 +239,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
     //   default:
     //     alert('Invalid Share Method')
     // }
+    debugger;
     props.onClose();
   }
   async function getTeamsTabConfig(): Promise<[TeamsTab, string]> {
@@ -544,8 +545,8 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
       This {ShareType[shareType]} is currently shared with {existingShares.length} teams.
 
     </MessageBar>;
-  if (showExistingShares) return (<ExistingShares
-    onClose={() => setShowExistingShares(false)}
+  if (showExistingShares) return (<ExistingShares setExistingShares={setExistingShares}
+    onClose={() =>{debugger; setShowExistingShares(false)}}
     existingShares={existingShares}
     context={props.context}
     shareType={shareType}
