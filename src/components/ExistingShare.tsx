@@ -107,13 +107,13 @@ export function ExistingShare(props: IExistingShareProps) {
             }
           ]}
         />
-        <Label >TeamsTabs</Label>
+        <Label >Teams Tabs</Label>
         <DetailsList items={teamsTabs} selectionMode={SelectionMode.none}
           columns={[
 
             {
               key: "cmd",
-              minWidth: 20, name: "",
+              minWidth: 20, name: "",isResizable:true,
               onRender: (item?, index?, column?) => {
                 return <IconButton iconProps={{ iconName: "Delete" }} onClick={e => {
                   debugger;
@@ -142,7 +142,7 @@ export function ExistingShare(props: IExistingShareProps) {
             },
             {
               key: "contentUrl",
-              minWidth: 90, name: "Url", fieldName: "displayName", isResizable: true,
+              minWidth: 400, name: "Url", fieldName: "displayName", isResizable: true,isMultiline:true,
               onRender: (item?, index?, column?) => {
                 return item.configuration.contentUrl
               }

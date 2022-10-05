@@ -55,7 +55,7 @@ export interface IShareToTeamsProps {
 }
 export function ShareToTeamsContent(props: IShareToTeamsProps) {
   const sp = spfi().using(SPFx(props.context));
-  const graph:GraphFI = graphfi().using(SPFxGR(props.context));
+  const graph: GraphFI = graphfi().using(SPFxGR(props.context));
   const [shareType, setShareType] = React.useState<ShareType>(null);
   //const [shareMethod, setShareMethod] = React.useState<ShareMethod>(0);
   const [item, setItem] = React.useState<any>(null);
@@ -173,26 +173,24 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
       .then(() => { setIsLoading(false) })
       .catch(console.error);
   }, [props.event]);
-    async function shareToTeams() {
+  async function shareToTeams() {
     debugger;
 
     const teamId: string = selectedTeam[0].key as string;
     const channelId: string = selectedTeamChannels[0].key as string;
     const channel = await graph.teams.getById(teamId).channels.getById(channelId);
     const channelTabs = await graph.teams.getById(teamId).channels.getById(channelId).tabs;
-    // switch (shareMethod) {
-    //   case ShareMethod.ChannelTab:
     let [teamsTab, appUrl] = await getTeamsTabConfig();
     teamsTab.displayName = tabName;
     switch (shareType) {
       case ShareType.Library:
-        await grantTeamMembersAcessToLibrary(teamId, selectedRoleDefinitionId);
+        await Utilities.grantTeamMembersAcessToLibrary(teamId, selectedRoleDefinitionId, sp, roleDefinitionInfos, props.context.pageContext.list.id.toString());
         break;
       case ShareType.Folder:
-        await grantTeamMembersAcessToFolder(teamId, selectedRoleDefinitionId);
+        await Utilities.grantTeamMembersAcessToFolder(teamId, selectedRoleDefinitionId, sp, roleDefinitionInfos, folderServerRelativePath);
         break;
       case ShareType.File:
-        await grantTeamMembersAcessToItem(teamId, selectedRoleDefinitionId);
+        await Utilities.grantTeamMembersAcessToItem(teamId, selectedRoleDefinitionId, sp, roleDefinitionInfos, props.context.pageContext.list.id.toString(), item["Id"]);
         break;
     }
     await channelTabs.add('Tab', appUrl, teamsTab)
@@ -205,29 +203,6 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
       });
 
 
-    //     break;
-    //   // case ShareMethod.ChannelMessage:
-    //   //   let chatMessage: ChatMessage = await getChatMessageConfig();
-
-    //   //   switch (shareType) {
-    //   //     case ShareType.Library:
-    //   //       await grantTeamMembersAcessToLibrary(teamId, selectedRoleDefinitionId);
-    //   //       break;
-
-    //   //     case ShareType.Folder:
-    //   //       await grantTeamMembersAcessToFolder(teamId, selectedRoleDefinitionId);
-    //   //       break;
-
-    //   //     case ShareType.File:
-    //   //       await grantTeamMembersAcessToItem(teamId, selectedRoleDefinitionId);
-    //   //       break;
-    //   //   }
-
-    //   //   channel.messages(chatMessage);
-    //   //   break;
-    //   default:
-    //     alert('Invalid Share Method')
-    // }
     debugger;
     props.onClose();
   }
@@ -332,53 +307,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
     }
 
   }
-  
-  async function grantTeamMembersAcessToLibrary(teamId: string, roleDefinitionId: number) {
-    debugger;
-    const siteUser = await Utilities.ensureTeamsUser(sp, teamId);
-    const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
-    const teamPermissions = await sp.web.lists
-      .getById(props.context.pageContext.list.id.toString()).getUserEffectivePermissions(siteUser.LoginName);
- 
-    const hasem = Utilities.hasPermissions(teamPermissions, roledefinition.BasePermissions)
-     debugger;
-    if (!hasem) {
-      await await sp.web.lists
-        .getById(props.context.pageContext.list.id.toString())
-        .breakRoleInheritance(true, false);
-      await sp.web.lists
-        .getById(props.context.pageContext.list.id.toString())
-        .roleAssignments.add(siteUser.Id, roleDefinitionId);
-    }
-  }
-  async function grantTeamMembersAcessToFolder(teamId: string, roleDefinitionId: number) {
-    //const sp = spfi().using(SPFx(props.context));
-    const siteUser = await Utilities.ensureTeamsUser(sp, teamId);
-    const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
-    const folder = await sp.web.getFolderByServerRelativePath(folderServerRelativePath).getItem()
-    const teamPermissions = await folder.getUserEffectivePermissions(siteUser.LoginName);
-    const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
 
-    if (!teamHasPermissions) {
-      await folder.breakRoleInheritance(true, false);
-      await folder.roleAssignments.add(siteUser.Id, roleDefinitionId);
-    }
-  }
-  async function grantTeamMembersAcessToItem(teamId: string, roleDefinitionId: number) {
-    // const sp = spfi().using(SPFx(props.context));
-    const siteUser = await Utilities.ensureTeamsUser(sp, teamId);
-    const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
-    const selectedItem = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
-      .items.getById(item["Id"]);
-
-    const teamPermissions = await selectedItem.getUserEffectivePermissions(siteUser.LoginName);
-    const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);
-
-    if (!teamHasPermissions) {
-      await selectedItem.breakRoleInheritance(true, false);
-      await selectedItem.roleAssignments.add(siteUser.Id, roleDefinitionId);
-    }
-  }
 
 
   async function getListViews(sp, viewId: string) {
@@ -448,15 +377,21 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
       This {ShareType[shareType]} is currently shared with {existingShares.length} teams.
 
     </MessageBar>;
-  if (showExistingShares) return (<ExistingShares setExistingShares={setExistingShares}
-    onClose={() =>{debugger; setShowExistingShares(false)}}
-    existingShares={existingShares}
-    context={props.context}
-    shareType={shareType}
-    sp={sp} graph={graph}
-    title={`Existing Teams Shares for ${ShareType[shareType]} `}
-listId={props.context.pageContext.list.id.toString()}
-  />)
+  if (showExistingShares) {
+
+    return (
+
+      <ExistingShares setExistingShares={setExistingShares}
+        onClose={() => { debugger; setShowExistingShares(false) }}
+        existingShares={existingShares}
+        getTeamsTabConfig={getTeamsTabConfig()}
+        context={props.context}
+        shareType={shareType}
+        sp={sp} graph={graph}
+        title={`Existing Teams Shares for ${ShareType[shareType]} `}
+        listId={props.context.pageContext.list.id.toString()}
+      />)
+  }
   return (
     <Panel
       isOpen={props.isOpen}
