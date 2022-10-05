@@ -3,7 +3,7 @@ import { IconButton } from "@microsoft/office-ui-fabric-react-bundle";
 import { BaseComponentContext } from "@microsoft/sp-component-base";
 import { IListViewCommandSetExecuteEventParameters } from "@microsoft/sp-listview-extensibility";
 import { ExistingShares, IExistingSharesProps } from "./ExistingShares"
-import { graphfi, SPFx as SPFxGR } from "@pnp/graph";
+import { GraphFI, graphfi, SPFx as SPFxGR } from "@pnp/graph";
 import "@pnp/graph/";
 import "@pnp/graph/groups";
 import "@pnp/graph/onedrive";
@@ -42,7 +42,7 @@ import * as React from "react";
 import { useEffect } from "react";
 import { IShareToTeamsCommandSetProperties } from "../extensions/shareToTeams/ShareToTeamsCommandSet";
 import { ShareType } from "../model/model";
-
+import * as Utilities from "../utilities";
 
 // import "@pnp/graph/onedrive";
 export interface IShareToTeamsProps {
@@ -55,7 +55,7 @@ export interface IShareToTeamsProps {
 }
 export function ShareToTeamsContent(props: IShareToTeamsProps) {
   const sp = spfi().using(SPFx(props.context));
-  const graph = graphfi().using(SPFxGR(props.context));
+  const graph:GraphFI = graphfi().using(SPFxGR(props.context));
   const [shareType, setShareType] = React.useState<ShareType>(null);
   //const [shareMethod, setShareMethod] = React.useState<ShareMethod>(0);
   const [item, setItem] = React.useState<any>(null);
@@ -78,7 +78,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
   const [library, setLibrary] = React.useState<IList>(null);
   const [chatMessageText, setChatMessageText] = React.useState<string>("");
   const [teamPermissions, setTeamPermissions] = React.useState<IBasePermissions>(null);
-
+  const [contentUrl, setContentUrl] = React.useState<IBasePermissions>(null);
   useEffect(() => {
 
     // declare the data fetching function
@@ -162,7 +162,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
 
       setSelectedViewId(viewIdFromUrl);
       await getListViews(sp, viewIdFromUrl);
-      await getRoleDefs(sp);
+      setRoleDefinitionInfos(await Utilities.getRoleDefs(sp));
       setIsLoading(false);
     }
 
@@ -173,18 +173,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
       .then(() => { setIsLoading(false) })
       .catch(console.error);
   }, [props.event]);
-  async function ensureTeamsUser(sp: SPFI, teamId: string): Promise<ISiteUserProps> {
-
-    // const group = await graph.groups.getById(teamId)();
-    const user = await sp.web.ensureUser(getTeamLoginName(teamId));
-    console.dir(user);
-    return user.data;
-  }
-  function getTeamLoginName(teamId: string): string {
-    return `c:0o.c|federateddirectoryclaimprovider|${teamId}`;
-  }
-
-  async function shareToTeams() {
+    async function shareToTeams() {
     debugger;
 
     const teamId: string = selectedTeam[0].key as string;
@@ -343,89 +332,16 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
     }
 
   }
-  // async function getChatMessageConfig(): Promise<ChatMessage> {
-  //   debugger;
-  //   let chatMessage: ChatMessage = {}
-  //   switch (shareType) {
-  //     case ShareType.Library:
-  //       //alert("cannot share library in chat")
-  //       const attachId1 = "1";
-  //       chatMessage = {
-  //         "body": {
-  //           "contentType": "html",
-  //           "content": `${chatMessageText} <attachment id="${attachId1}"></attachment>`
-  //         },
-  //         "attachments": [
-  //           {
-  //             "id": null,
-  //             "contentType": "reference",
-  //             "contentUrl": document.location.origin + library["RootFolder"]["ServerRelativeUrl"],
-  //             "name": "Test"
-  //           }
-  //         ]
-  //       }
-  //       break;
-  //     case ShareType.Folder:
-  //       alert("cannot share  folder in chat")
-  //       break;
-  //     case ShareType.File:
-  //       const site = graph.sites.getById(props.context.pageContext.site.id.toString());
-  //       const drives: Drive[] = await Site(site, "drives?$select=name,id")();
-  //       const drivex = find(drives, (d) => { return d.name === libraryName });
-  //       const fileLibraryRelativeUrl = item.File.ServerRelativeUrl.replace(library["RootFolder"]["ServerRelativeUrl"], '');
-  //       const driveItem: DriveItem = await Site(site, `drives/${drivex.id}/root:${fileLibraryRelativeUrl}`)() as DriveItem;
-  //       // driveitem.tag looks like this:"{A24C417C-469A-4CE8-B176-C254D44E67FB},10" (WITH the quotes...wtf)
-  //       const attachId = driveItem.eTag.replace("\"", "").split(",")[0].replace("{", "").replace("}", "");
-  //       chatMessage = {
-  //         "body": {
-  //           "contentType": "html",
-  //           "content": `${chatMessageText} <attachment id="${attachId}"></attachment>`
-  //         },
-  //         "attachments": [
-  //           {
-  //             "id": attachId,
-  //             "contentType": "reference",
-  //             "contentUrl": document.location.origin + item.File.ServerRelativeUrl,
-  //             "name": driveItem.name
-  //           }
-  //         ]
-  //       }
-  //       break;
-  //   }
-  //   return chatMessage;
-  // }
-  function hasPermissions(existingPermissions: any, requiredPermissions: any) { // hig and low are strings , not numbers!
-    // see : https://www.w3schools.com/js/js_bitwise.asp
-    // and  : https://www.darraghoriordan.com/2019/07/29/bitwise-mask-typescript/
-    const eHi = parseInt(existingPermissions["High"], 10);
-    const eLo = parseInt(existingPermissions["Low"], 10);
-    const rHi = parseInt(requiredPermissions["High"], 10);
-    const rLo = parseInt(requiredPermissions["Low"], 10);
-
-    const hasPerms =
-      (rHi & eHi) === rHi
-      &&
-      (rLo & eLo) === rLo;
-
-    return hasPerms;
-  }
+  
   async function grantTeamMembersAcessToLibrary(teamId: string, roleDefinitionId: number) {
     debugger;
-    //const sp = spfi().using(SPFx(props.context));
-    const siteUser = await ensureTeamsUser(sp, teamId);
+    const siteUser = await Utilities.ensureTeamsUser(sp, teamId);
     const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
-
     const teamPermissions = await sp.web.lists
       .getById(props.context.pageContext.list.id.toString()).getUserEffectivePermissions(siteUser.LoginName);
-    //const teamHasPermissions = await sp.web.hasPermissions(teamPermissions, roledefinition.RoleTypeKind);// does not work. View-only  Permission 
-    //  console.log(teamHasPermissions); 
-
-    const hasem = hasPermissions(teamPermissions, roledefinition.BasePermissions)
-
-    console.log(teamPermissions);
-    console.log(roledefinition.BasePermissions);
-
-    debugger;
+ 
+    const hasem = Utilities.hasPermissions(teamPermissions, roledefinition.BasePermissions)
+     debugger;
     if (!hasem) {
       await await sp.web.lists
         .getById(props.context.pageContext.list.id.toString())
@@ -437,7 +353,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
   }
   async function grantTeamMembersAcessToFolder(teamId: string, roleDefinitionId: number) {
     //const sp = spfi().using(SPFx(props.context));
-    const siteUser = await ensureTeamsUser(sp, teamId);
+    const siteUser = await Utilities.ensureTeamsUser(sp, teamId);
     const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
     const folder = await sp.web.getFolderByServerRelativePath(folderServerRelativePath).getItem()
     const teamPermissions = await folder.getUserEffectivePermissions(siteUser.LoginName);
@@ -450,7 +366,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
   }
   async function grantTeamMembersAcessToItem(teamId: string, roleDefinitionId: number) {
     // const sp = spfi().using(SPFx(props.context));
-    const siteUser = await ensureTeamsUser(sp, teamId);
+    const siteUser = await Utilities.ensureTeamsUser(sp, teamId);
     const roledefinition = find(roleDefinitionInfos, x => x.Id === roleDefinitionId);
     const selectedItem = await sp.web.lists.getById(props.context.pageContext.list.id.toString())
       .items.getById(item["Id"]);
@@ -465,19 +381,6 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
   }
 
 
-  async function getRoleDefs(sp) {
-    // get the role definitions for the current web -- now full condtrol or designer
-    await sp.web.roleDefinitions
-      .filter("BasePermissions ne null and Hidden eq false and RoleTypeKind ne 4 and RoleTypeKind ne 5 and RoleTypeKind ne 6")  // 4 is designer, 5 is admin, 6 is editor
-      .orderBy("Order", true)
-      ().then((roleDefs: IRoleDefinitionInfo[]) => {
-
-        setRoleDefinitionInfos(roleDefs);
-      }).catch(err => {
-
-        console.log(err);
-      });
-  }
   async function getListViews(sp, viewId: string) {
     await sp.web.lists
       .getById(props.context.pageContext.list.id.toString())
@@ -521,7 +424,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
     <div>
       <Label>This Team currently has these permissions on this  {ShareType[shareType]}</Label>
       <FList
-        items={filter(roleDefinitionInfos, rd => hasPermissions(teamPermissions, rd.BasePermissions))}
+        items={filter(roleDefinitionInfos, rd => Utilities.hasPermissions(teamPermissions, rd.BasePermissions))}
         onRenderCell={(item?, index?: number, isScrolling?: boolean) => {
 
           return (
@@ -550,7 +453,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
     existingShares={existingShares}
     context={props.context}
     shareType={shareType}
-    sp={sp}
+    sp={sp} graph={graph}
     title={`Existing Teams Shares for ${ShareType[shareType]} `}
 listId={props.context.pageContext.list.id.toString()}
   />)
@@ -617,7 +520,7 @@ listId={props.context.pageContext.list.id.toString()}
                 console.log(err);
               });
             // get the teams permissions
-            const teamsLoginName = getTeamLoginName(tagList[0].key as string);
+            const teamsLoginName = Utilities.getTeamLoginNameFromTeamId(tagList[0].key as string);
             switch (shareType) {
               case ShareType.Library:
                 setTeamPermissions(await sp.web.lists
