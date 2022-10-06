@@ -16,9 +16,12 @@ import { IItem } from "@pnp/sp/items";
 import "@pnp/sp/lists";
 import { IList } from "@pnp/sp/lists";
 import "@pnp/sp/security";
-
+import { TimelinePipe } from "@pnp/core";
+import { Queryable } from "@pnp/queryable";
+import { HttpsProxyAgent } from "https-proxy-agent";
 import "@pnp/sp/security/web";
 import { ISiteUserProps } from "@pnp/sp/site-users/types";
+
 import "@pnp/sp/site-users/web";
 import "@pnp/sp/views";
 import { IViewInfo } from "@pnp/sp/views";
@@ -41,6 +44,37 @@ import {
   Channel,
 } from "@pnp/graph/teams";
 import { find } from "lodash";
+
+export async function getItemsInListWithUniqueRoleAssignments(
+  sp: SPFI,
+  listId: string
+) {
+  debugger;
+  const r = await sp.web.lists
+    .getById(listId)
+    .getItemsByCAMLQuery({
+      ViewXml: `<View><Query><Where><IsNotNull><FieldRef Name='SharedWithDetails' /></IsNotNull></Where></Query></View>`,
+    })
+    .then((e) => {
+      debugger;
+    })
+    .catch((e) => {
+      debugger;
+    });
+  return r;
+}
+
+export function CacheBust(): TimelinePipe<Queryable> {
+  // see https://pnp.github.io/pnpjs/core/behavior-recipes/#add-querystring-to-bypass-request-caching
+  return (instance: Queryable) => {
+    instance.on.pre(async (url, init, result) => {
+      url += url.indexOf("?") > -1 ? "&" : "?";
+      url += "nonce=" + encodeURIComponent(new Date().toISOString());
+      return [url, init, result];
+    });
+    return instance;
+  };
+}
 export async function grantTeamMembersAcessToItem(
   teamId: string,
   roleDefinitionId: number,
@@ -59,15 +93,16 @@ export async function grantTeamMembersAcessToItem(
   const teamPermissions = await selectedItem.getUserEffectivePermissions(
     siteUser.LoginName
   );
+  debugger;
   const teamHasPermissions = await sp.web.hasPermissions(
     teamPermissions,
     roledefinition.RoleTypeKind
   );
 
-  if (!teamHasPermissions) {
+ // if (!teamHasPermissions) {
     await selectedItem.breakRoleInheritance(true, false);
     await selectedItem.roleAssignments.add(siteUser.Id, roleDefinitionId);
-  }
+ // }
 }
 
 export async function grantTeamMembersAcessToFolder(
@@ -94,10 +129,10 @@ export async function grantTeamMembersAcessToFolder(
     roledefinition.RoleTypeKind
   );
 
-  if (!teamHasPermissions) {
+  // if (!teamHasPermissions) {
     await folder.breakRoleInheritance(true, false);
     await folder.roleAssignments.add(siteUser.Id, roleDefinitionId);
-  }
+  //}
 }
 
 export async function grantTeamMembersAcessToLibrary(
@@ -119,12 +154,12 @@ export async function grantTeamMembersAcessToLibrary(
 
   const hasem = hasPermissions(teamPermissions, roledefinition.BasePermissions);
   debugger;
-  if (!hasem) {
+ // if (!hasem) {
     await await sp.web.lists.getById(listId).breakRoleInheritance(true, false);
     await sp.web.lists
       .getById(listId)
       .roleAssignments.add(siteUser.Id, roleDefinitionId);
-  }
+ // }
 }
 export function hasPermissions(
   existingPermissions: any,
@@ -170,6 +205,19 @@ export async function getRoleDefs(sp): Promise<IRoleDefinitionInfo[]> {
       return [];
     });
 }
+export async function removeRoleAssignmentFromItem(parms: {
+  sp: SPFI;
+  listId: string;
+  ra: IRoleAssignmentInfo;
+  roleDefId: number;
+  itemId: number;
+}) {
+  debugger;
+  await parms.sp.web.lists
+    .getById(parms.listId)
+    .items.getById(parms.itemId)
+    .roleAssignments.remove(parms.ra.PrincipalId, parms.roleDefId);
+}
 export async function removeRoleAssignmentFromList(parms: {
   sp: SPFI;
   listId: string;
@@ -186,6 +234,30 @@ export async function getJoinedTeams(parms: {
 }): Promise<any[]> {
   debugger;
   return parms.graph.me.joinedTeams();
+}
+export function RemoveLimitedAccess(roleAssignments: Array<any>): Array<any> {
+  debugger;
+  //   {
+  //     "High": "48",
+  //     "Low": "134287360"
+  // }
+  var temp = roleAssignments
+    .map((ra) => {
+      return {
+        ...ra,
+        RoleDefinitionBindings: ra.RoleDefinitionBindings.filter((rdb) => {
+          return !(
+            rdb.BasePermissions.High === "48" &&
+            rdb.BasePermissions.Low === "134287360"
+          );
+        }),
+      };
+    })
+    .filter((ra) => {
+      return ra.RoleDefinitionBindings.length !== 0;
+    });
+
+  return temp;
 }
 export async function getTeamTabs(parms: {
   graph: GraphFI;
@@ -205,7 +277,11 @@ export async function getTeamTabs(parms: {
           debugger;
           for (const tab of tabs) {
             if (tab.configuration.contentUrl === parms.contentUrl) {
-              teamTabs.push({...tab,channelId:channel.id,channelName:channel.displayName});// add the channel id so we can delete it
+              teamTabs.push({
+                ...tab,
+                channelId: channel.id,
+                channelName: channel.displayName,
+              }); // add the channel id so we can delete it
             }
           }
         })
@@ -224,8 +300,17 @@ export function getTeamIdFromLoginName(loginName: string): string {
   return loginName.split("|")[2];
 }
 
-export function removeTeamsTab(graph: GraphFI,teamId:string,channelId:string,tabId:string) {
-   graph.teams.getById(teamId).channels.getById(channelId).tabs.getById(tabId).delete();
+export function removeTeamsTab(
+  graph: GraphFI,
+  teamId: string,
+  channelId: string,
+  tabId: string
+) {
+  graph.teams
+    .getById(teamId)
+    .channels.getById(channelId)
+    .tabs.getById(tabId)
+    .delete();
 }
 //   export async function getTabs(parms: {
 //     graph:GraphFI;

@@ -51,15 +51,17 @@ export interface IShareToTeamsProps {
   context: BaseComponentContext;
   event: IListViewCommandSetExecuteEventParameters;
   settings: IShareToTeamsCommandSetProperties;
-  isOpen: boolean
+  isOpen: boolean;
+  nonce: number;
 }
 export function ShareToTeamsContent(props: IShareToTeamsProps) {
-  const sp = spfi().using(SPFx(props.context));
+  const sp = spfi().using(SPFx(props.context), Utilities.CacheBust());
+  //const sp = spfi().using(SPFx(props.context));
   const graph: GraphFI = graphfi().using(SPFxGR(props.context));
   const [shareType, setShareType] = React.useState<ShareType>(null);
   //const [shareMethod, setShareMethod] = React.useState<ShareMethod>(0);
   const [item, setItem] = React.useState<any>(null);
-  const [existingShares, setExistingShares] = React.useState<any[]>(null);
+  const [existingShares, setExistingShares] = React.useState<any[]>([]);
   const [showExistingShares, setShowExistingShares] = React.useState<boolean>(false);
 
   const [canManageTabs, setCanManageTabs] = React.useState<boolean>(false);
@@ -79,11 +81,13 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
   const [chatMessageText, setChatMessageText] = React.useState<string>("");
   const [teamPermissions, setTeamPermissions] = React.useState<IBasePermissions>(null);
   const [contentUrl, setContentUrl] = React.useState<IBasePermissions>(null);
+  console.log(`itemid=${props.nonce}`);
   useEffect(() => {
-
+    console.log("Running Init");
     // declare the data fetching function
     const fetchData = async () => {
       //const sp = spfi().using(SPFx(props.context));
+      debugger;
       const urlParams = new URLSearchParams(window.location.search);
       //TODO: save view enhancements to state and reapply isAscending=true sortField=LinkFilename FilterFields1=testcol1 FilterValues1=a%3B%23b FilterTypes1=Text       let locFolderServerRelativePath = urlParams.get("id")
       let folderServerRelativePathFromUrl = urlParams.get("id")
@@ -104,34 +108,42 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
           .select("GUID", "Id", "Title", "EffectiveBasePermissions", "File_x0020_Type", "FileSystemObjectType", "ServerRedirectedEmbedUrl", "File/Name", "File/LinkingUrl", "File/ServerRelativeUrl", "Folder/ServerRelativeUrl", "Folder/Name")
           .expand("File", "Folder")
           ();
-
         setUserCanManagePermissions(sp.web.hasPermissions(locItem["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
 
+        const existingItemShares = await sp.web.lists.getById(locListId).items.getById(locItemId).roleAssignments.expand("Member,RoleDefinitionBindings")
+          .filter("startswith(Member/LoginName,'c:0o.c|federateddirectoryclaimprovider|')")(); // only teams
+        setExistingShares(Utilities.RemoveLimitedAccess(existingItemShares));
         if (locItem["FileSystemObjectType"] == 1) {
-          // its a folder
-
+          //
+          // they selected a FOLDER -- SHARING FOLDER
+          //
           setShareType(ShareType.Folder);
           //setShareMethod(ShareMethod.ChannelTab);// cant share a  folder in a chat
           setFolderServerRelativePath(locItem["Folder"]["ServerRelativeUrl"]);
-
           setTabName(props.context.pageContext.list.title);// see if user has permissions to share this folder
           setTitle(`Sharing folder ${locItem["Folder"]["Name"]} to Teams`);
 
         } else {
-          // its a document
+          //
+          // they selected a Document -- SHARING FILE
+          //
           setItem(locItem);
           setShareType(ShareType.File);
           setTabName(locItem["File"]["Name"]);
+
           setTitle(`Sharing file ${locItem["File"]["Name"]} to Teams`);
         }
       } else {
 
         if (folderServerRelativePathFromUrl) {
-          // they are within a folder
+          //
+          // they in a folder with no items selected -- SHARING FOLDER
+          //
           setFolderServerRelativePath(folderServerRelativePathFromUrl);
-
           setShareType(ShareType.Folder);
-          // setShareMethod(ShareMethod.ChannelTab);// cant share a  folder in a chat
+          const existingFolderShares = await (await sp.web.getFolderByServerRelativePath(folderServerRelativePathFromUrl).getItem()).roleAssignments.expand("Member,RoleDefinitionBindings")
+            .filter("startswith(Member/LoginName,'c:0o.c|federateddirectoryclaimprovider|')")(); // only teams
+          setExistingShares(Utilities.RemoveLimitedAccess(existingFolderShares));
           await sp.web.getFolderByServerRelativePath(folderServerRelativePathFromUrl)
             .expand("ListItemAllFields/EffectiveBasePermissions")()
             .then(folder => {
@@ -139,27 +151,24 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
               setTitle(`Sharing folder ${folder["Name"]} to Teams`);
             });
         } else {
-          // they are at the root of the list
+          //
+          // they are at the root of the list -- SHARING LIST
+          //
           setShareType(ShareType.Library)
-          //setShareMethod(ShareMethod.ChannelTab);// cant share a  library in a chat
-
           await sp.web.lists.getById(locListId).select("Title", "EffectiveBasePermissions")()
             .then(list => {
-
-
               const userCanManagePermissions = (sp.web.hasPermissions(list["EffectiveBasePermissions"], PermissionKind.ManagePermissions));
               setUserCanManagePermissions(userCanManagePermissions);
               setTitle(`Sharing list ${list["Title"]} to Teams`);
             });
           debugger;
-          setExistingShares(await sp.web.lists.getById(locListId).roleAssignments.expand("Member,RoleDefinitionBindings").filter("startswith(Member/LoginName,'c:0o.c|federateddirectoryclaimprovider|')")());
+          const existingListShares = await sp.web.lists.getById(locListId).roleAssignments.expand("Member,RoleDefinitionBindings")
+            .filter("startswith(Member/LoginName,'c:0o.c|federateddirectoryclaimprovider|')")(); // only teams
+          setExistingShares(Utilities.RemoveLimitedAccess(existingListShares));
           debugger;
         }
-
       }
-
       setLibraryName(props.context.pageContext.list.title);
-
       setSelectedViewId(viewIdFromUrl);
       await getListViews(sp, viewIdFromUrl);
       setRoleDefinitionInfos(await Utilities.getRoleDefs(sp));
@@ -172,7 +181,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
 
       .then(() => { setIsLoading(false) })
       .catch(console.error);
-  }, [props.event]);
+  }, [props.nonce]);
   async function shareToTeams() {
     debugger;
 
@@ -370,7 +379,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
     <MessageBar messageBarType={MessageBarType.blocked}>
       You do not have permission to share this. Please contact a site owner to share.
     </MessageBar>;
-  const exitingSharesMessage = existingShares.length > 0 &&
+  const exitingSharesMessage = existingShares && existingShares.length > 0 &&
     <MessageBar messageBarType={MessageBarType.info} actions={<div>
       <PrimaryButton onClick={() => setShowExistingShares(true)}>View</PrimaryButton>
     </div>}>
@@ -390,6 +399,7 @@ export function ShareToTeamsContent(props: IShareToTeamsProps) {
         sp={sp} graph={graph}
         title={`Existing Teams Shares for ${ShareType[shareType]} `}
         listId={props.context.pageContext.list.id.toString()}
+        itemId={item?item.Id:null}
       />)
   }
   return (

@@ -26,8 +26,8 @@ export interface IShareToTeamsCommandSetProperties {
 
 export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShareToTeamsCommandSetProperties> {
   private panelPlaceHolder: HTMLDivElement = null;
-  private panelProps:IShareToTeamsProps;
-  
+  private panelProps: IShareToTeamsProps;
+
   @override
   public async onInit(): Promise<void> {
     await super.onInit();
@@ -45,7 +45,7 @@ export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShar
     const shareToTeamsCommand: Command = this.tryGetCommand(
       "COMMAND_SHARE_TO_TEAMS"
     );
-       if (shareToTeamsCommand) {
+    if (shareToTeamsCommand) {
       if (event.selectedRows.length == 1) {
         //
         switch (event.selectedRows[0].getValueByName("FSObjType")) {
@@ -92,6 +92,7 @@ export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShar
   public onExecute(event: IListViewCommandSetExecuteEventParameters): void {
     switch (event.itemId) {
       case "COMMAND_SHARE_TO_TEAMS":
+        debugger;
         this.cmdShareToTeams(event);
         break;
       default:
@@ -102,27 +103,25 @@ export default class ShareToTeamsCommandSet extends BaseListViewCommandSet<IShar
   private cmdShareToTeams(event: IListViewCommandSetExecuteEventParameters) {
 
     this.panelProps = {
+      nonce:(new Date()).getTime(),
       event: event,
       settings: this.properties,
       context: this.context,
       onClose: this._dismissPanel.bind(this),
-      isOpen:true
+      isOpen: true,
     };
     this._showPanel();
   }
   private _showPanel() {
-    
     this._renderPanelComponent();
   }
 
   private _dismissPanel() {
- 
-    this.panelProps.isOpen=false;
+    this.panelProps.isOpen = false;
     this._renderPanelComponent();
   }
 
   private _renderPanelComponent() {
-   
     const element: React.ReactElement<IShareToTeamsProps> = React.createElement(
       ShareToTeamsContent,
       this.panelProps

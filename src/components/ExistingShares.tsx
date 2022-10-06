@@ -29,6 +29,7 @@ import * as React from "react";
 import { ShareType } from "../model/model";
 import { filter, map } from "lodash";
 import { useEffect } from "react";
+import { Spinner } from "office-ui-fabric-react";
 
 
 // import "@pnp/graph/onedrive";
@@ -43,6 +44,7 @@ export interface IExistingSharesProps {
   graph: GraphFI,
   listId: string
   getTeamsTabConfig: Promise<[TeamsTab, string]>;
+  itemId?:number;
 }
 export function ExistingShares(props: IExistingSharesProps) {
 
@@ -65,6 +67,17 @@ export function ExistingShares(props: IExistingSharesProps) {
   },[]);
 
   debugger;
+  if (isLoading) {
+    return (
+      <Panel
+        isOpen={true}
+        onDismiss={props.onClose}
+        headerText={props.title}
+
+      ><Spinner label="Loading..."></Spinner></Panel>
+
+    )
+  }
   return (
 
     <Panel
@@ -91,7 +104,7 @@ export function ExistingShares(props: IExistingSharesProps) {
               },
               {
                 key: "Title",
-                minWidth: 200, name: "Team", isResizable: true,
+                minWidth: 180, name: "Team", isResizable: true,
                 onRender: (item?, index?, column?) => {
                   return item.Member.Title
                 }
@@ -109,6 +122,7 @@ export function ExistingShares(props: IExistingSharesProps) {
             title={props.title}
             sp={props.sp} graph={props.graph}
             listId={props.listId}
+            itemId={props.itemId}
             removeRoleAssignment={(roleDefId, principalId) => {
               debugger;
               //remove selected role

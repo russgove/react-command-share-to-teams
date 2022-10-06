@@ -21,7 +21,7 @@ import "@pnp/sp/views";
 import { IViewInfo } from "@pnp/sp/views";
 import "@pnp/sp/webs";
 import { filter } from "lodash";
-import { PrimaryButton } from "office-ui-fabric-react";
+import { PrimaryButton, Spinner } from "office-ui-fabric-react";
 import { DetailsList, SelectionMode } from "office-ui-fabric-react/lib/DetailsList";
 import { Label } from "office-ui-fabric-react/lib/Label";
 import { Panel, PanelType } from "office-ui-fabric-react/lib/Panel";
@@ -45,6 +45,7 @@ export interface IExistingShareProps {
   graph: GraphFI,
   listId: string
   contentUrl: string;
+  itemId?:number
 
 }
 export function ExistingShare(props: IExistingShareProps) {
@@ -55,6 +56,9 @@ export function ExistingShare(props: IExistingShareProps) {
     async function asyncStartup() {
       debugger;
       setTeamsTabs(await Utilities.getTeamTabs({ graph: props.graph, teamId: Utilities.getTeamIdFromLoginName(props.existingShare.Member.LoginName), contentUrl: props.contentUrl }));
+      debugger;
+      var x=await Utilities.getItemsInListWithUniqueRoleAssignments(props.sp,props.listId);
+      debugger;
     }
     // declare the data fetching function
     setIsLoading(true);
@@ -65,6 +69,17 @@ export function ExistingShare(props: IExistingShareProps) {
   }, []);
 
   debugger;
+  if (isLoading) {
+    return (
+      <Panel
+        isOpen={true}
+        onDismiss={props.onClose}
+        headerText={props.title}
+
+      ><Spinner label="Loading..."></Spinner></Panel>
+
+    )
+  }
   return (
 
     <Panel
@@ -76,7 +91,7 @@ export function ExistingShare(props: IExistingShareProps) {
       <div>
         {props.contentUrl}<br />
         {props.existingShare["Member"]["Title"]}
-        <Label >Permissions</Label>
+        <Label > {props.existingShare["Member"]["Title"]} currently have these permissions on this  {ShareType[props.shareType]}</Label>
         <DetailsList items={props.existingShare.RoleDefinitionBindings} selectionMode={SelectionMode.none}
           columns={[
 
@@ -86,7 +101,17 @@ export function ExistingShare(props: IExistingShareProps) {
               onRender: (item?, index?, column?) => {
                 return <IconButton iconProps={{ iconName: "Delete" }} onClick={e => {
                   debugger;
-                  Utilities.removeRoleAssignmentFromList({ listId: props.listId, ra: props.existingShare, roleDefId: item.Id, sp: props.sp })
+                  switch(props.shareType){
+                    case ShareType.Library:
+                      Utilities.removeRoleAssignmentFromList({ listId: props.listId, ra: props.existingShare, roleDefId: item.Id, sp: props.sp })
+                      break;
+                      case ShareType.File:
+                        case ShareType.Folder:
+                          debugger;
+                          Utilities.removeRoleAssignmentFromItem({ listId: props.listId, ra: props.existingShare, roleDefId: item.Id, sp: props.sp,itemId:props.itemId })
+                        break;
+                  }
+                  
                   props.removeRoleAssignment(item.Id, props.existingShare.PrincipalId)
                 }}></IconButton>
               }
@@ -107,7 +132,8 @@ export function ExistingShare(props: IExistingShareProps) {
             }
           ]}
         />
-        <Label >Teams Tabs</Label>
+        <Label > The folwoing Teams Tabs show this {ShareType[props.shareType]}</Label>
+       
         <DetailsList items={teamsTabs} selectionMode={SelectionMode.none}
           columns={[
 
